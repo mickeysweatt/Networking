@@ -20,8 +20,8 @@ def configure (env):
     env.check_boost(lib='system thread')
     env.add_supported_cxxflags (cxxflags = ['-O0', '-g3', '-Wall', 
                                             '-Wno-unused-private-field', 
-                                            '-fcolor-diagnostics', '-Qunused-arguments', 
-                                            '-Werror'])
+                                            '-fcolor-diagnostics', '-Wunused-arguments', 
+                                            ])
 
 def build (env):
     env.load ('compiler_c compiler_cxx')

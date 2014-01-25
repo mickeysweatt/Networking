@@ -15,9 +15,11 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define PORT "1025"  // the port users will be connecting to
+#define PORT "14886"  // the port users will be connecting to
 
-#define BACKLOG 10     // how many pending connections queue will hold
+#define BACKLOG 20     // how many pending connections queue will hold
+
+#define BUFFER_SIZE 4096
 
 void sigchld_handler(int s)
 {
@@ -34,26 +36,21 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-
-int main(void)
+int init_server_socket()
 {
-    int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
+    int sockfd;  // listen on sock_fd
     struct addrinfo hints, *servinfo, *p;
-    struct sockaddr_storage their_addr; // connector's address information
-    socklen_t sin_size;
-    struct sigaction sa;
     int yes=1;
-    char s[INET6_ADDRSTRLEN];
     int rv;
-
+    
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_socktype = SOCK_STREAM; // TCP
     hints.ai_flags = AI_PASSIVE; // use my IP
-
+    
     if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
+        return -1;
     }
 
     // loop through all the results and bind to the first we can
@@ -75,32 +72,27 @@ int main(void)
             perror("server: bind");
             continue;
         }
-
         break;
     }
 
     if (p == NULL)  {
         fprintf(stderr, "server: failed to bind\n");
-        return 2;
+        return -2;
     }
 
     freeaddrinfo(servinfo); // all done with this structure
+    return sockfd;
+}
 
-    if (listen(sockfd, BACKLOG) == -1) {
-        perror("listen");
-        exit(1);
-    }
-
-    sa.sa_handler = sigchld_handler; // reap all dead processes
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
-    }
-
-    printf("server: waiting for connections...\n");
-
+int accept_connection(const int sockfd)
+{
+    socklen_t sin_size;
+    struct sockaddr_storage their_addr; // connector's address information
+    int new_fd; // new connection on new_fd
+    char s[INET6_ADDRSTRLEN];
+    ssize_t response_size;
+    char buff [BUFFER_SIZE];
+    
     while(1) {  
     // main accept() loop
         sin_size = sizeof their_addr;
@@ -117,13 +109,46 @@ int main(void)
 
         if (!fork()) { // this is the child process
             close(sockfd); // child doesn't need the listener
-            if (send(new_fd, "Hello, world!", 13, 0) == -1)
-                perror("send");
+            
+            // this is where we actually get the request from the server and 
+            // start to try to handle it
+            if ((response_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
+            {
+                perror("recv");
+            }
+            
             close(new_fd);
             exit(0);
         }
         close(new_fd);  // parent doesn't need this
     }
+}
+
+int main(void)
+{
+    int sockfd;
+    struct sigaction sa;
+    char s[INET6_ADDRSTRLEN];
+
+    sockfd = init_server_socket();
+
+    if (listen(sockfd, BACKLOG) == -1) {
+        perror("listen");
+        exit(1);
+    }
+    
+    // set up the signal handle to reap all dead processes
+    sa.sa_handler = sigchld_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(1);
+    }
+    
+    printf("server: waiting for connections...\n");
+    accept_connection(sockfd);
 
     return 0;
 }
