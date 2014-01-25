@@ -32,9 +32,8 @@ HTTPServer::HTTPServer() : d_sockfd(-1)
 int HTTPServer::startServer()
 {
     int sockfd;  // listen on sock_fd
-    struct addrinfo hints, *servinfo, *p;
-    int yes=1;
-    int rv;
+    struct addrinfo hints, *servinfo;
+    int yes=1, rv;
     
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -47,7 +46,8 @@ int HTTPServer::startServer()
     }
 
     // loop through all the results and bind to the first we can
-    for(p = servinfo; p != NULL; p = p->ai_next) {
+    for(struct addrinfo *p = servinfo; p != NULL; p = p->ai_next) 
+    {
         if ((sockfd = socket(p->ai_family, p->ai_socktype,
                 p->ai_protocol)) == -1) {
             perror("server: socket");
@@ -65,12 +65,12 @@ int HTTPServer::startServer()
             perror("server: bind");
             continue;
         }
+        if (p->ai_next == NULL)
+        {
+            fprintf(stderr, "server: failed to bind\n");
+            return -2;
+        }
         break;
-    }
-
-    if (p == NULL)  {
-        fprintf(stderr, "server: failed to bind\n");
-         return -2;
     }
 
     freeaddrinfo(servinfo); // all done with this structure

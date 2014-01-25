@@ -21,7 +21,7 @@ def configure (env):
     env.add_supported_cxxflags (cxxflags = ['-O0', '-g3', '-Wall', 
                                             '-Wno-unused-private-field', 
                                             '-fcolor-diagnostics', '-Wunused-arguments', 
-                                            ])
+                                            '-Werror'])
 
 def build (env):
     env.load ('compiler_c compiler_cxx')
@@ -36,7 +36,7 @@ def build (env):
             # ...
             #
             "compat.cc", # OSX 10.6 compatibility
-            "http-proxy.cc", # main() function is here
+            "main.cpp",
             "http-headers.cc",
             "http-request.cc",
             "http-response.cc",
