@@ -1,3 +1,19 @@
+#include "http-server.h"
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+
+#define PORT "14886"  // the port users will be connecting to
+
+#define BACKLOG 20     // how many pending connections queue will hold
+
+#define BUFFER_SIZE 4096
+
 // get sockaddr, IPv4 or IPv6:
 static void *get_in_addr(struct sockaddr *sa)
 {
@@ -9,7 +25,11 @@ static void *get_in_addr(struct sockaddr *sa)
 }
 
 
-HTTPServer::HTTPServer()
+HTTPServer::HTTPServer() : d_sockfd(-1)
+{
+}
+
+int HTTPServer::startServer()
 {
     int sockfd;  // listen on sock_fd
     struct addrinfo hints, *servinfo, *p;
@@ -23,7 +43,7 @@ HTTPServer::HTTPServer()
     
     if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        d_status = -1;
+        return -1;
     }
 
     // loop through all the results and bind to the first we can
@@ -50,21 +70,17 @@ HTTPServer::HTTPServer()
 
     if (p == NULL)  {
         fprintf(stderr, "server: failed to bind\n");
-        d_status = -2;
+         return -2;
     }
 
     freeaddrinfo(servinfo); // all done with this structure
     d_sockfd = sockfd;
+    return 0;
 }
 
 int HTTPServer::getSocketFileDescriptor() const
 {
     return d_sockfd;
-}
-
-int HTTPServer::getStatus() const
-{
-    return d_status;
 }
 
 void HTTPServer::waitForConnection() const
