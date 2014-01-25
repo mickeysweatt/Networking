@@ -116,6 +116,10 @@ int HTTPServer::acceptConnection() const
         close(d_sockfd); // child doesn't need the listener
         // this is where we actually get the request from the server and 
         // start to try to handle it
+        if (send(new_fd, "Write me a message: ", 21, 0) == -1)
+        {
+            perror("send");
+        }
         if ((response_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
         {
             perror("recv");
