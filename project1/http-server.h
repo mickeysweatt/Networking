@@ -6,7 +6,6 @@
 //
 //@Classes: 
 //  mrm::HTTPServer: a simple cached http-proxy server
-//
 
 namespace mrm {
 

@@ -2,6 +2,7 @@
 ** server.c -- a stream socket server demo
 */
 #include "http-server.h"
+#include "http-request.h"
 #include <stdio.h>
 #include <sys/wait.h>
 #include <stdlib.h>
@@ -27,10 +28,10 @@ int main(void)
     set_up_signal_handler();
     mrm::HTTPServer server;
     if (server.startServer() < 0) exit(1);
-       
+
     printf("server: waiting for connections...\n");
     // main loop
-    while (server.acceptConnection() > 0);
+    while (server.acceptConnection() >= 0);
     
     return 0;
 }

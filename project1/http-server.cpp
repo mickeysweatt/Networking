@@ -1,4 +1,7 @@
+// HTTPServer.cpp                                                      -*-C++-*-
 #include "http-server.h"
+#include "http-request.h"
+#include "http-headers.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -8,7 +11,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 
-
+#include <iostream>
 
 #define BACKLOG 20     // how many pending connections queue will hold
 
@@ -105,10 +108,11 @@ int HTTPServer::acceptConnection()
     struct sockaddr_storage their_addr; // connector's address information
     int new_fd; // new connection on new_fd
     char s[INET6_ADDRSTRLEN];
-    ssize_t response_size;
+    ssize_t request_size;
     char buff[BUFFER_SIZE];
+    memset(buff,0, BUFFER_SIZE);
      
-    sin_size = sizeof their_addr;
+    sin_size = sizeof(their_addr);
     // blocks!!!
     new_fd = accept(d_sockfd, (struct sockaddr *)&their_addr, &sin_size);
     if (new_fd == -1) 
@@ -120,7 +124,7 @@ int HTTPServer::acceptConnection()
     inet_ntop(their_addr.ss_family,
               get_in_addr((struct sockaddr *)&their_addr),
               s, 
-              sizeof s);
+              sizeof(s));
     printf("server: got connection from %s\n", s);
 
     if (!fork()) { // this is the child process
@@ -131,11 +135,35 @@ int HTTPServer::acceptConnection()
         {
             perror("send");
         }
-        if ((response_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
+        if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
         {
             perror("recv");
         }
-        printf("From host @%s: %s",s, buff);
+        //buff[request_size++] = 0xd;
+        //buff[request_size++] = 0xa;
+        // if in local cache
+            //      if cached copy fresh
+            //          create HTTPResponeObject
+            //          return response
+            // create an HTTPRequest with data from buffer
+            // create an HTTPClient Object
+            // pass in HTTPRequest, and have get the page
+            // create HTTPResponeObject
+            // return response
+        HttpRequest req;        
+        try 
+        {
+            req.ParseRequest(buff, request_size);
+            req.FormatRequest(buff);
+            std::cout << "Full request: " << buff << std::endl; 
+        }
+        catch (ParseException e)
+        {
+            std::string err = "Error: ";
+            err.append(e.what());
+            err.append("\n");
+            if (send(new_fd, err.c_str(), err.length(), 0) == -1) perror("send");
+        }
         close(new_fd);
         exit(0);
     }

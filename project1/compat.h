@@ -6,8 +6,10 @@
 #ifndef HAVE_MEMMEM
 /* Return the first occurrence of NEEDLE in HAYSTACK.  */
 void *
-memmem (const void *haystack, size_t haystack_len, const void *needle,
-	size_t needle_len);
+memmem (const void *haystack, 
+        size_t      haystack_len, 
+        const void *needle, 
+        size_t      needle_len);
 #endif
 
 #ifndef HAVE_STPNCPY

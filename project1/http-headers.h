@@ -10,6 +10,7 @@
 
 #include <string>
 #include <list>
+#include <exception>
 
 /**
  * Exception that will be thrown when parsing cannot be performed
@@ -17,12 +18,12 @@
 class ParseException : public std::exception
 {
 public:
-  ParseException (const std::string &reason) : m_reason (reason) { }
-  virtual ~ParseException () throw () { }
-  virtual const char* what() const throw ()
-  { return m_reason.c_str (); }
+    ParseException (const std::string &reason) : m_reason (reason) { }
+    virtual ~ParseException () throw () { }
+    virtual const char* what() const throw ()
+    { return m_reason.c_str (); }
 private:
-  std::string m_reason;
+    std::string m_reason;
 };
 
 /**
