@@ -1,6 +1,9 @@
 // HTTPServer.cpp                                                      -*-C++-*-
+// Beej's Guide to Network Programming used as a background template
+// http://beej.us/guide/bgnet/output/html/multipage/clientserver.html
 #include "http-server.h"
 #include "http-request.h"
+#include "http-response.h"
 #include "http-headers.h"
 #include <stdlib.h>
 #include <unistd.h>
@@ -141,18 +144,28 @@ int HTTPServer::acceptConnection()
         }
         buff[request_size++] = 0xd;
         buff[request_size++] = 0xa;
-        
 
         try 
         {
             // create an HTTPRequest with data from buffer
-            HttpRequest req;        
+            HttpRequest  req;        
+            HttpResponse response;
             req.ParseRequest(buff, request_size);
             // validate the request
-            if (req.GetMethod() == HttpRequest::UNSUPPORTED)
-            {
-                // send back at 500 error
-            }
+            //if (req.GetMethod() == HttpRequest::UNSUPPORTED)
+            //{
+                response.SetStatusCode("501");
+                size_t response_size = response.GetTotalLength();
+                char *response_str = new char [response_size];
+                response.FormatResponse(response_str);
+                if (send(new_fd,
+                         response_str,
+                         response_size, 
+                         0) == -1) 
+                {
+                     perror("send");
+                 }
+            //}
             // if in local cache
             //      if cached copy fresh
             //          create HTTPResponeObject

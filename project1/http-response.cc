@@ -9,7 +9,7 @@
 
 #include <string> // C++ STL string
 #include <string.h> // helpers to copy C-style strings
-
+#include <stdio.h>
 #include "compat.h"
 
 using namespace std;
@@ -129,8 +129,38 @@ HttpResponse::GetStatusCode () const
 }
 
 void
-HttpResponse::SetStatusCode (const std::string &code)
+HttpResponse::SetStatusCode(const std::string &code)
 {
+    if (code.empty())
+    {
+        return;
+    }
+    for (size_t i = 0; i <code.length(); ++i)
+    {
+        if (!isdigit(code[i]))
+        {
+            printf("NOT A DIGIT");
+            return;
+        }
+    }
+    int code_num = atoi(code.c_str());
+    if (100 > code_num || code_num > 599)
+    {
+        printf("OUT OF RANGE: %d", code_num);
+        return;
+    }
+    switch(code_num)
+    {
+        case 200 :{
+            SetStatusMsg("OK");
+        } break;
+        case 404: {
+            SetStatusMsg("Not Found");
+        } break;
+        case 501: {
+            SetStatusMsg("Not Implemented");
+        } break;
+    }
     m_statusCode = code;
 }
 
