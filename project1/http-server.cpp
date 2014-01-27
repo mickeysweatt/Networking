@@ -139,21 +139,30 @@ int HTTPServer::acceptConnection()
         {
             perror("recv");
         }
-        //buff[request_size++] = 0xd;
-        //buff[request_size++] = 0xa;
-        // if in local cache
+        buff[request_size++] = 0xd;
+        buff[request_size++] = 0xa;
+        
+
+        try 
+        {
+            // create an HTTPRequest with data from buffer
+            HttpRequest req;        
+            req.ParseRequest(buff, request_size);
+            // validate the request
+            if (req.GetMethod() == HttpRequest::UNSUPPORTED)
+            {
+                // send back at 500 error
+            }
+            // if in local cache
             //      if cached copy fresh
             //          create HTTPResponeObject
             //          return response
-            // create an HTTPRequest with data from buffer
+            
             // create an HTTPClient Object
             // pass in HTTPRequest, and have get the page
             // create HTTPResponeObject
             // return response
-        HttpRequest req;        
-        try 
-        {
-            req.ParseRequest(buff, request_size);
+            
             req.FormatRequest(buff);
             std::cout << "Full request: " << buff << std::endl; 
         }
