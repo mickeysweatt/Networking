@@ -28,8 +28,6 @@ int main(void)
     set_up_signal_handler();
     mrm::HTTPServer server;
     if (server.startServer() < 0) exit(1);
-
-    printf("server: waiting for connections...\n");
     // main loop
     while (server.acceptConnection() >= 0);
     

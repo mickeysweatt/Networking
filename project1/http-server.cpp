@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include <iostream>
 
@@ -119,6 +120,7 @@ int HTTPServer::startServer(int port)
 
 int HTTPServer::acceptConnection()
 {
+    printf("server: waiting for connections...\n");
     if (listen(d_sockfd, BACKLOG) == -1) 
     {
         perror("listen");
@@ -152,62 +154,89 @@ int HTTPServer::acceptConnection()
         close(d_sockfd); // child doesn't need the listener
         // this is where we actually get the request from the server and 
         // start to try to handle it
-        strcpy(buff,"Write me a message: ");
-        request_size = strlen(buff);
-        if (sendall(new_fd, buff,&request_size) == -1)
-        {
-            perror("send");
-        }
-        if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
-        {
-            perror("recv");
-        }
-        buff[request_size++] = 0xd;
-        buff[request_size++] = 0xa;
+        while (1) {
+            strcpy(buff,"Write me a message: ");
+            request_size = strlen(buff);
+            if (sendall(new_fd, buff,&request_size) == -1)
+            {
+                perror("send");
+            }
+            struct timeval tv;
 
-        try 
-        {
-            // create an HTTPRequest with data from buffer
-            HttpRequest  req;        
-            HttpResponse response;
-            req.ParseRequest(buff, request_size);
-            // validate the request
-            //if (req.GetMethod() == HttpRequest::UNSUPPORTED)
-            //{
-                response.SetStatusCode("501");
-                ssize_t response_size = response.GetTotalLength();
-                char *response_str = new char [response_size];
-                response.FormatResponse(response_str);
-                if (sendall(new_fd,
-                         response_str,
-                         &response_size) == -1) 
+            tv.tv_sec = 10;
+            tv.tv_usec = 500000;
+
+            setsockopt(new_fd, 
+                       SOL_SOCKET, 
+                       SO_RCVTIMEO, 
+                       (char *)&tv,
+                       sizeof(struct timeval));
+            if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
+            {
+                perror("recv");
+            }
+            if (request_size > 0 && errno != EAGAIN)
+            {
+                buff[request_size++] = 0xd;
+                buff[request_size++] = 0xa;
+
+                try 
                 {
-                     perror("send");
+                    // create an HTTPRequest with data from buffer
+                    HttpRequest  req;        
+                    HttpResponse response;
+                    req.ParseRequest(buff, request_size);
+                    // validate the request
+                    //if (req.GetMethod() == HttpRequest::UNSUPPORTED)
+                    //{
+                        response.SetStatusCode("501");
+                        ssize_t response_size = response.GetTotalLength();
+                        char *response_str = new char [response_size];
+                        response.FormatResponse(response_str);
+                        if (sendall(new_fd,
+                                 response_str,
+                                 &response_size) == -1) 
+                        {
+                             perror("send");
+                        }
+                    //}
+                    // if in local cache
+                    //      if cached copy fresh
+                    //          create HTTPResponeObject
+                    //          return response
+                    
+                    // create an HTTPClient Object
+                    // pass in HTTPRequest, and have get the page
+                    // create HTTPResponeObject
+                    // return response
+                    
+                    req.FormatRequest(buff);
+                    std::cout << "Full request: " << buff << std::endl; 
                 }
-            //}
-            // if in local cache
-            //      if cached copy fresh
-            //          create HTTPResponeObject
-            //          return response
-            
-            // create an HTTPClient Object
-            // pass in HTTPRequest, and have get the page
-            // create HTTPResponeObject
-            // return response
-            
-            req.FormatRequest(buff);
-            std::cout << "Full request: " << buff << std::endl; 
+                catch (ParseException e)
+                {
+                    std::string err = "Error: ";
+                    err.append(e.what());
+                    err.append("\n");
+                    ssize_t msg_size = err.length();
+                    if (sendall(new_fd, err.c_str(), &msg_size) == -1) perror("send");
+                    close(new_fd);
+                    exit(1);
+                }
+            }
+            else 
+            {
+                printf("server: closed connection from %s\n", s);
+                strcpy(buff,"\nConnection timed out\n");   
+                request_size = strlen(buff);
+                if (sendall(new_fd, buff,&request_size) == -1)
+                {
+                    perror("send");
+                }
+                close(new_fd);
+                exit(0);
+            }
         }
-        catch (ParseException e)
-        {
-            std::string err = "Error: ";
-            err.append(e.what());
-            err.append("\n");
-            ssize_t msg_size = err.length();
-            if (sendall(new_fd, err.c_str(), &msg_size) == -1) perror("send");
-        }
-        close(new_fd);
-        exit(0);
     }
     close(new_fd);
     return 0;
