@@ -33,6 +33,24 @@ static void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+static int sendall(int sockfd, const char *buf, ssize_t *len)
+{
+    ssize_t total = 0;        // how many bytes we've sent
+    size_t bytesleft = *len; // how many we have left to send
+    ssize_t n;
+
+    while(total < *len) {
+        n = send(sockfd, buf+total, bytesleft, 0);
+        if (n == -1) { break; }
+        total += n;
+        bytesleft -= n;
+    }
+
+    *len = total; // return number actually sent here
+
+    return n==-1?-1:0; // return -1 on failure, 0 on success
+} 
+
 namespace mrm {
                         // ----------
                         // HTTPServer
@@ -134,7 +152,9 @@ int HTTPServer::acceptConnection()
         close(d_sockfd); // child doesn't need the listener
         // this is where we actually get the request from the server and 
         // start to try to handle it
-        if (send(new_fd, "Write me a message: ", 21, 0) == -1)
+        strcpy(buff,"Write me a message: ");
+        request_size = strlen(buff);
+        if (sendall(new_fd, buff,&request_size) == -1)
         {
             perror("send");
         }
@@ -155,16 +175,15 @@ int HTTPServer::acceptConnection()
             //if (req.GetMethod() == HttpRequest::UNSUPPORTED)
             //{
                 response.SetStatusCode("501");
-                size_t response_size = response.GetTotalLength();
+                ssize_t response_size = response.GetTotalLength();
                 char *response_str = new char [response_size];
                 response.FormatResponse(response_str);
-                if (send(new_fd,
+                if (sendall(new_fd,
                          response_str,
-                         response_size, 
-                         0) == -1) 
+                         &response_size) == -1) 
                 {
                      perror("send");
-                 }
+                }
             //}
             // if in local cache
             //      if cached copy fresh
@@ -184,7 +203,8 @@ int HTTPServer::acceptConnection()
             std::string err = "Error: ";
             err.append(e.what());
             err.append("\n");
-            if (send(new_fd, err.c_str(), err.length(), 0) == -1) perror("send");
+            ssize_t msg_size = err.length();
+            if (sendall(new_fd, err.c_str(), &msg_size) == -1) perror("send");
         }
         close(new_fd);
         exit(0);
