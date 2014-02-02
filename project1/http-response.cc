@@ -34,7 +34,9 @@ HttpResponse::ParseResponse (const char *buffer, size_t size)
 {
     const char *curPos = buffer;
 
-    const char *endline = (const char *)memmem (curPos, size - (curPos-buffer), "\r\n", 2);
+    const char *endline = 
+                static_cast<const char *>(
+                            memmem (curPos, size - (curPos-buffer), "\r\n", 2));
     if (endline == 0)
     {
         throw ParseException ("HTTP response doesn't end with \\r\\n");
@@ -160,6 +162,8 @@ HttpResponse::SetStatusCode(const std::string &code)
         case 501: {
             SetStatusMsg("Not Implemented");
         } break;
+        default: {
+        }break;
     }
     m_statusCode = code;
 }

@@ -2,11 +2,10 @@
 ** server.c -- a stream socket server demo
 */
 #include "http-server.h"
-#include "http-request.h"
-#include <iostream>
 #include <stdio.h>
 #include <sys/wait.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 static void sigchld_handler(int s)
 {
@@ -24,14 +23,20 @@ static void sigchld_handler(int s)
         exit(1); \
     }
 
+void *print_message_function(void *m)
+{
+     printf("Threads: %u \n", static_cast<unsigned int>(pthread_self()));
+}
+ 
+    
 int main(void)
 {
-    // HttpRequest r;
-    // std::string request = "GET google.com/index.html HTTP/1.1\r\n\r\n";
-    // r.ParseRequest(request.c_str(), request.length());
-    // char buff [100];
-    // r.FormatRequest(buff);
-    // std::cout << buff << std::endl;
+    pthread_t threads [10];
+    size_t num_threads = sizeof(threads)/ sizeof(*threads);
+    for (size_t i = 0; i < num_threads; ++i) {
+        pthread_create(&threads[i], NULL, print_message_function, NULL);
+    }
+    
     set_up_signal_handler();
     mrm::HTTPServer server;
     if (server.startServer() < 0) exit(1);

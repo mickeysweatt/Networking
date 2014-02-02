@@ -28,10 +28,10 @@
 static void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
+        return &(reinterpret_cast<struct sockaddr_in*>(sa)->sin_addr);
     }
 
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+    return &(reinterpret_cast<struct sockaddr_in6*>(sa)->sin6_addr);
 }
 
 static int sendall(int sockfd, const char *buf, ssize_t *len)
@@ -137,7 +137,9 @@ int HTTPServer::acceptConnection()
      
     sin_size = sizeof(their_addr);
     // blocks!!!
-    new_fd = accept(d_sockfd, (struct sockaddr *)&their_addr, &sin_size);
+    new_fd = accept(d_sockfd, 
+                    reinterpret_cast<struct sockaddr *>(&their_addr), 
+                    &sin_size);
     if (new_fd == -1) 
     {
         perror("accept");
@@ -145,7 +147,7 @@ int HTTPServer::acceptConnection()
     }
 
     inet_ntop(their_addr.ss_family,
-              get_in_addr((struct sockaddr *)&their_addr),
+              get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
               s, 
               sizeof(s));
     printf("server: got connection from %s\n", s);
@@ -169,7 +171,7 @@ int HTTPServer::acceptConnection()
             setsockopt(new_fd, 
                        SOL_SOCKET, 
                        SO_RCVTIMEO, 
-                       (char *)&tv,
+                       reinterpret_cast<char *>(&tv),
                        sizeof(struct timeval));
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
