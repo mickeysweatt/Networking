@@ -219,14 +219,18 @@ int HTTPServer::acceptConnection()
                     err.append(e.what());
                     err.append("\n");
                     ssize_t msg_size = err.length();
-                    if (sendall(new_fd, err.c_str(), &msg_size) == -1) perror("send");
+                    if (sendall(new_fd, err.c_str(), &msg_size) == -1) 
+                    {
+                        perror("send");
+                    }
+                    printf("server: closed connection from %s\n", s);
                     close(new_fd);
                     exit(1);
                 }
             }
             else 
             {
-                printf("server: closed connection from %s\n", s);
+                
                 strcpy(buff,"\nConnection timed out\n");   
                 request_size = strlen(buff);
                 if (sendall(new_fd, buff,&request_size) == -1)

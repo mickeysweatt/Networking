@@ -3,6 +3,7 @@
 */
 #include "http-server.h"
 #include "http-request.h"
+#include <iostream>
 #include <stdio.h>
 #include <sys/wait.h>
 #include <stdlib.h>
@@ -25,11 +26,18 @@ static void sigchld_handler(int s)
 
 int main(void)
 {
+    // HttpRequest r;
+    // std::string request = "GET google.com/index.html HTTP/1.1\r\n\r\n";
+    // r.ParseRequest(request.c_str(), request.length());
+    // char buff [100];
+    // r.FormatRequest(buff);
+    // std::cout << buff << std::endl;
     set_up_signal_handler();
     mrm::HTTPServer server;
     if (server.startServer() < 0) exit(1);
     // main loop
     while (server.acceptConnection() >= 0);
-    
+
+
     return 0;
 }
