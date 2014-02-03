@@ -1,6 +1,3 @@
-/*
-** server.c -- a stream socket server demo
-*/
 #include "http-server.h"
 #include <stdio.h>
 #include <sys/wait.h>
