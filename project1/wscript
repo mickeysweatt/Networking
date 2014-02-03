@@ -31,7 +31,7 @@ def configure (env):
                                             '-Wstrict-aliasing=2', '-Wunknown-pragmas', '-Wundef', '-Wlarger-than-len',
                                             '-Wunsafe-loop-optimizations', '-Wpointer-arith', '-Wcast-qual', 
                                             '-Wwrite-strings', '-Winline', '-Wvolatile-register-var', '-Wno-unused-parameter',
-                                            '-Wno-variadic-macros', '-pthread'])
+                                            '-Wno-variadic-macros'])
     else:
         env.add_supported_cxxflags (cxxflags = ['-I.', '-Wall', 
                                             '-fcolor-diagnostics', '-Wunused-arguments', 
