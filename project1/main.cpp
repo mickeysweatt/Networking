@@ -1,6 +1,9 @@
 #include "http-server.h"
+#include "http-request.h"
+#include "http-client.h"
 #include <stdio.h>
 #include <sys/wait.h>
+#include <stdlib.h>
 #include <stdlib.h>
 //#include <pthread.h>
 
@@ -43,7 +46,15 @@ int main(void)
     if (server.startServer() < 0) exit(1);
     // main loop
     while (server.acceptConnection() >= 0);
-
-
+    /*
+    HttpRequest req;
+    std::string r = "GET www.google.com HTTP/1.1 \r\n\r\n";
+    req.ParseRequest(r.c_str(), r.length());
+    r = req.GetHost();
+    unsigned short port = req.GetPort();
+    HttpClient client(r, port);
+    client.createConnection();
+    client.sendRequest(req);
+    */
     return 0;
 }

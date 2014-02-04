@@ -5,6 +5,7 @@
 #include "http-request.h"
 #include "http-response.h"
 #include "http-headers.h"
+#include "http-client.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -213,7 +214,10 @@ int HTTPServer::acceptConnection()
                     // return response
                     
                     req.FormatRequest(buff);
-                    std::cout << "Full request: " << buff << std::endl; 
+                    std::cout << "Full request: " << buff << std::endl;
+                    HttpClient client(req.GetHost(), req.GetPort());
+                    client.createConnection();
+                    client.sendRequest(req);
                 }
                 catch (ParseException e)
                 {

@@ -15,6 +15,8 @@
  back from the server and stores it
 */
 
+class HttpRequest;
+
 class HttpClient{
 
   private:
@@ -35,7 +37,7 @@ class HttpClient{
 
 
   public:
-    HttpClient(std::string hostname, short port = 80);
+    HttpClient(std::string hostname, unsigned short port = 80);
       //constructs the client and initializes it
     ~HttpClient();
       //destructs stuff don't know yet ***********
@@ -44,7 +46,7 @@ class HttpClient{
         initializes the client and creates a connection between
         the client and the server needed to serve the Httprequest
       */
-    int sendRequest();
+    int sendRequest(HttpRequest& request);
       /*
         sends the Httprequest over to the desired server and
         stores the response
