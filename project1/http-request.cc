@@ -37,7 +37,9 @@ HttpRequest::ParseRequest (const char *buffer, size_t size)
 {
     const char *curPos = buffer;
 
-    const char *endline = (const char *)memmem (curPos, size - (curPos-buffer), "\r\n", 2);
+    const char *endline = 
+               static_cast<const char *>(
+                            memmem (curPos, size - (curPos-buffer), "\r\n", 2));
     if (endline == 0)
     {
         throw ParseException ("HTTP Request doesn't end with \\r\\n");
@@ -72,7 +74,38 @@ HttpRequest::ParseRequest (const char *buffer, size_t size)
     if (pos == string::npos)
     {
         // just path
-        SetPath (*token);
+        size_t posSlash = token->find ("/");
+        if (posSlash == string::npos)
+        {
+            posSlash = token->length();
+            SetPath("/");
+        }
+        else
+        {
+            string path = token->substr (posSlash, token->size () - posSlash);
+            // TRACE (path);
+            SetPath (path);
+        }
+        size_t posPort = token->find (":");
+        if (posPort != string::npos && posPort < posSlash) // port is specified
+        {
+          
+          string port = token->substr (posPort + 1, posSlash - posPort - 1);
+          // TRACE (port);
+          SetPort (boost::lexical_cast<unsigned short> (port));
+
+          string host = token->substr (pos, posPort-pos);
+          // TRACE (host);
+          SetHost (host);
+        }
+        else
+        {
+          SetPort (80);
+          
+          string host = token->substr (0, posSlash);
+          // TRACE (host);
+          SetHost (host);
+        }
     }
     else
     {
@@ -206,9 +239,13 @@ HttpRequest::GetHost () const
 void
 HttpRequest::SetHost (const std::string &host)
 {
-  m_host = host;
-
-  if (m_port != 80)
+    m_host = host;
+    size_t pos = 0;
+    if ((pos = host.find("www.") == std::string::npos))
+    {
+        m_host = "www." + host.substr(pos - 1);
+    }
+    if (m_port != 80)
     {
       ModifyHeader ("Host", m_host + ":" + boost::lexical_cast<string> (m_port));
     }
@@ -238,6 +275,7 @@ HttpRequest::SetPort (unsigned short port)
 const std::string &
 HttpRequest::GetPath () const
 {
+  
   return m_path;
 }
   

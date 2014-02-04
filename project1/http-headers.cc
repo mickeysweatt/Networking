@@ -38,10 +38,12 @@ HttpHeaders::ParseHeaders (const char *buffer, size_t size)
     string key;
     string value;
   
-    while (((size_t)(curPos-buffer) <= size-2) &&
+    while ((static_cast<size_t>(curPos-buffer) <= size-2) &&
          (*curPos != '\r' && *(curPos+1) != '\n'))
     {
-        const char *endline = (const char *)memmem (curPos, size - (curPos-buffer), "\r\n", 2);
+        const char *endline = 
+                static_cast<const char *>(
+                            memmem (curPos, size - (curPos-buffer), "\r\n", 2));
         if (endline == 0)
         {
             throw ParseException ("Header line does end with \\r\\n");
@@ -63,7 +65,9 @@ HttpHeaders::ParseHeaders (const char *buffer, size_t size)
         }
         else
         {
-            const char *header_key = (const char*)memmem (curPos, endline - curPos, ":", 1);
+            const char *header_key = 
+                static_cast<const char *>(
+                                      memmem(curPos, endline - curPos, ":", 1));
 
             if (header_key == 0)
             {
