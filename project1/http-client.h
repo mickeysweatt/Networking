@@ -35,7 +35,7 @@ class HttpClient{
 
 
   public:
-    HttpClient(std::string hostname, int port);
+    HttpClient(std::string hostname, short port = 80);
       //constructs the client and initializes it
     ~HttpClient();
       //destructs stuff don't know yet ***********
