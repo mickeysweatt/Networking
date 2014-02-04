@@ -1,5 +1,6 @@
 #include "http-server.h"
 #include "http-request.h"
+#include "http-response.h"
 #include "http-client.h"
 #include <stdio.h>
 #include <sys/wait.h>
@@ -42,19 +43,26 @@ int main(void)
     */
     
     set_up_signal_handler();
+    
     mrm::HTTPServer server;
     if (server.startServer() < 0) exit(1);
     // main loop
     while (server.acceptConnection() >= 0);
+    
     /*
     HttpRequest req;
-    std::string r = "GET www.google.com HTTP/1.1 \r\n\r\n";
+    HttpResponse response;
+    std::string r = "GET http://cs.ucla.edu/classes/fall13/cs111/grading.html HTTP/1.1 \r\n\r\n";
     req.ParseRequest(r.c_str(), r.length());
     r = req.GetHost();
     unsigned short port = req.GetPort();
     HttpClient client(r, port);
     client.createConnection();
-    client.sendRequest(req);
+    client.sendRequest(req);    
+    response = client.getResponse();
+    ssize_t response_size = response.GetTotalLength();
+    char *response_str = new char [response_size];
+    //printf("%s\n", response_str);
     */
     return 0;
 }

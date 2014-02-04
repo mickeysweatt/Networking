@@ -16,6 +16,7 @@
 */
 
 class HttpRequest;
+class HttpResponse;
 
 class HttpClient{
 
@@ -27,7 +28,7 @@ class HttpClient{
     char* port;
    
     //holds the response that results from serving the http request
-    std::string response;
+    HttpResponse *response;
    
     //socket that gets open between the server and the client
     int sockfd;
@@ -51,7 +52,7 @@ class HttpClient{
         sends the Httprequest over to the desired server and
         stores the response
       */
-    std::string getResponse();
+    HttpResponse& getResponse();
       /*
         returns the response that is stored in the client after
         the client has received a response back from the server

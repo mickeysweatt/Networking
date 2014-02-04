@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include "http-request.h"
+#include "http-response.h"
 
 HttpClient::HttpClient(std::string h, unsigned short p){
 
@@ -21,6 +22,24 @@ HttpClient::HttpClient(std::string h, unsigned short p){
     perror("sprintf");
   }
 }
+
+static int sendall(int sockfd, const char *buf, ssize_t *len)
+{
+    ssize_t total = 0;        // how many bytes we've sent
+    size_t bytesleft = *len; // how many we have left to send
+    ssize_t n;
+
+    while(total < *len) {
+        n = send(sockfd, buf+total, bytesleft, 0);
+        if (n == -1) { break; }
+        total += n;
+        bytesleft -= n;
+    }
+
+    *len = total; // return number actually sent here
+
+    return n==-1?-1:0; // return -1 on failure, 0 on success
+} 
 
 HttpClient::~HttpClient() 
 {
@@ -67,7 +86,13 @@ int HttpClient::createConnection()
      }
      break;
    }
+    struct timeval tv = {4, 0};
 
+    setsockopt(sockfd, 
+               SOL_SOCKET, 
+               SO_RCVTIMEO, 
+               reinterpret_cast<char *>(&tv),
+               sizeof(struct timeval));
   //None of the entries were valid
   if(p == NULL){
     std::cout << "Failed to connect" << std::endl;
@@ -84,13 +109,15 @@ int HttpClient::sendRequest(HttpRequest& request)
   ssize_t numBytes;
   //Receiving buffer
   char recvbuf[512];
+  std::string response_str;
   //request
   char* sendbuf = new char[request.GetTotalLength()];
   request.FormatRequest(sendbuf);
   //const char *sendbuf = "GET /index.html HTTP/1.1\r\nHost: www.google.com\r\n\r\n";
   
   //send the request to server
-  if ((numBytes = send(sockfd, sendbuf, strlen(sendbuf), 0)) == -1)
+  ssize_t len_req = static_cast<ssize_t>(strlen(sendbuf));
+  if ((numBytes = sendall(sockfd, sendbuf, &len_req)) == -1)
   {
     perror("send");
   }
@@ -103,24 +130,35 @@ int HttpClient::sendRequest(HttpRequest& request)
   }
 
   //client gets response from server
-  do{
-    numBytes = recv(sockfd, recvbuf, 512, 0);
-    if(numBytes > 0){
-      //stores the data received into result string
-      std::string buf(recvbuf, 512);
-      response += buf; 
-      std::cout << response << std::endl;
-    }
-    else if(numBytes == 0)
-      std::cout << "Connection closed" << std::endl;
-    else
-      std::cout << "Receive failed" << std::endl;
+  do 
+  {
+       if ((numBytes = recv(sockfd, recvbuf, 512, 0)) == -1)
+       {
+            perror("recv");
+        }
+        if (numBytes > 0 && errno != EAGAIN)
+        {
+            //stores the data received into result string
+            std::string buf(recvbuf, numBytes);
+            response_str += buf; 
+            //std::cout << response << std::endl;
+        }
+        else if(numBytes == 0)
+        {
+            std::cout << "CLIENT: Connection closed" << std::endl;
+        }
+        else
+        {
+            std::cout << "CLIENT: Receive failed" << std::endl;
+        }
   } while(numBytes > 0);
-
+  response = new HttpResponse();
+  //std::cout << response_str << std::endl;
+  response->ParseResponse(response_str.c_str(), response_str.length());
   return 0;
 }
 
-std::string HttpClient::getResponse()
+HttpResponse& HttpClient::getResponse()
 {
-  return response;
+  return *response;
 }

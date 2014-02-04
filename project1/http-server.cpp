@@ -190,8 +190,8 @@ int HTTPServer::acceptConnection()
                     HttpResponse response;
                     req.ParseRequest(buff, request_size);
                     // validate the request
-                    //if (req.GetMethod() == HttpRequest::UNSUPPORTED)
-                    //{
+                    if (req.GetMethod() == HttpRequest::UNSUPPORTED)
+                    {
                         response.SetStatusCode("501");
                         ssize_t response_size = response.GetTotalLength();
                         char *response_str = new char [response_size];
@@ -202,7 +202,7 @@ int HTTPServer::acceptConnection()
                         {
                              perror("send");
                         }
-                    //}
+                    }
                     // if in local cache
                     //      if cached copy fresh
                     //          create HTTPResponeObject
@@ -218,6 +218,16 @@ int HTTPServer::acceptConnection()
                     HttpClient client(req.GetHost(), req.GetPort());
                     client.createConnection();
                     client.sendRequest(req);
+                    response = client.getResponse();
+                    ssize_t response_size = response.GetTotalLength();
+                    char *response_str = new char [response_size];
+                    response.FormatResponse(response_str);
+                    if (sendall(new_fd,
+                                response_str,
+                                &response_size) == -1) 
+                    {
+                         perror("send");
+                    }
                 }
                 catch (ParseException e)
                 {
@@ -236,8 +246,7 @@ int HTTPServer::acceptConnection()
             }
             else 
             {
-                
-                strcpy(buff,"\nConnection timed out\n");   
+                strcpy(buff,"\nserver: Connection timed out\n");   
                 request_size = strlen(buff);
                 if (sendall(new_fd, buff,&request_size) == -1)
                 {
