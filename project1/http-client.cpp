@@ -11,7 +11,6 @@
 #include "http-response.h"
 
 HttpClient::HttpClient(std::string h, unsigned short p){
-
   //Formats the hostname that is passed in as a string into a char array
   hostname = new char[h.length() + 1];
   strcpy(hostname,h.c_str());
@@ -154,6 +153,7 @@ int HttpClient::sendRequest(HttpRequest& request)
   } while(numBytes > 0);
   response = new HttpResponse();
   //std::cout << response_str << std::endl;
+  // parses headers and returns pointer to beginning of body
   response->ParseResponse(response_str.c_str(), response_str.length());
   return 0;
 }

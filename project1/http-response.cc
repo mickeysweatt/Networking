@@ -65,12 +65,15 @@ HttpResponse::ParseResponse (const char *buffer, size_t size)
     // TRACE (code);
     SetStatusCode (code);
 
-    string msg = responseLine.substr (posSecondSpace + 1, responseLine.size () - posSecondSpace - 1);
+    string msg = responseLine.substr (posSecondSpace + 1, 
+                                      responseLine.size () - posSecondSpace - 1);
     // TRACE (msg);
     SetStatusMsg (msg);
-
+    
     curPos = endline + 2;
-    return ParseHeaders (curPos, size - (curPos-buffer));
+    curPos =  ParseHeaders (curPos, size - (curPos-buffer));
+    SetBody(string(curPos));
+    return curPos + m_body.length();
 }
 
 
@@ -86,9 +89,11 @@ HttpResponse::GetTotalLength () const
     len += 2; // '\r\n'
 
     len += HttpHeaders::GetTotalLength ();
-
+    
+    len += m_body.length(); // 'body'
+    
     len += 2; // '\r\n'
-
+    
     return len;
 }
 
@@ -107,7 +112,8 @@ HttpResponse::FormatResponse (char *buffer) const
 
     bufLastPos = HttpHeaders::FormatHeaders (bufLastPos);
     bufLastPos = stpncpy (bufLastPos, "\r\n", 2);
-
+    bufLastPos = stpncpy (bufLastPos, m_body.c_str (), m_body.size ());
+    
     return bufLastPos;
 }
 
@@ -179,3 +185,16 @@ HttpResponse::SetStatusMsg (const std::string &msg)
 {
     m_statusMsg = msg;
 }
+
+void
+HttpResponse::SetBody (const std::string &body)
+{
+    m_body = body;
+}
+
+const std::string &
+HttpResponse::GetBody () const
+{
+    return m_body;
+}
+

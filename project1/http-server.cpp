@@ -158,12 +158,14 @@ int HTTPServer::acceptConnection()
         // this is where we actually get the request from the server and 
         // start to try to handle it
         while (1) {
+            /*
             strcpy(buff,"Write me a message: ");
             request_size = strlen(buff);
             if (sendall(new_fd, buff,&request_size) == -1)
             {
                 perror("send");
             }
+            */
             struct timeval tv;
 
             tv.tv_sec = 10;
@@ -208,20 +210,24 @@ int HTTPServer::acceptConnection()
                     //          create HTTPResponeObject
                     //          return response
                     
-                    // create an HTTPClient Object
-                    // pass in HTTPRequest, and have get the page
-                    // create HTTPResponeObject
-                    // return response
+
                     
                     req.FormatRequest(buff);
                     std::cout << "Full request: " << buff << std::endl;
+                    // create an HTTPClient Object
+                    
+                    
+                    
                     HttpClient client(req.GetHost(), req.GetPort());
                     client.createConnection();
+                    // pass in HTTPRequest, and have get the page
                     client.sendRequest(req);
+                    // create HTTPResponeObject
                     response = client.getResponse();
                     ssize_t response_size = response.GetTotalLength();
                     char *response_str = new char [response_size];
                     response.FormatResponse(response_str);
+                    // return response
                     if (sendall(new_fd,
                                 response_str,
                                 &response_size) == -1) 

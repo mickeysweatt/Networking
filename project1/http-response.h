@@ -93,10 +93,16 @@ public:
   void
   SetStatusMsg (const std::string &msg);
   
+  void 
+  SetBody(const std::string &body);
+  
+  const std::string& GetBody() const;
+  
 private:
   std::string m_version;
   std::string m_statusCode;
   std::string m_statusMsg;
+  std::string m_body;
 };
 
 #endif // _HTTP_RESPONSE_H_
