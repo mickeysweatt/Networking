@@ -168,7 +168,7 @@ int HTTPServer::acceptConnection()
             */
             struct timeval tv;
 
-            tv.tv_sec = 10;
+            tv.tv_sec = 50;
             tv.tv_usec = 500000;
 
             setsockopt(new_fd, 
@@ -182,9 +182,6 @@ int HTTPServer::acceptConnection()
             }
             if (request_size > 0 && errno != EAGAIN)
             {
-                //buff[request_size++] = 0xd;
-                //buff[request_size++] = 0xa;
-
                 try 
                 {
                     // create an HTTPRequest with data from buffer
@@ -209,8 +206,6 @@ int HTTPServer::acceptConnection()
                     //      if cached copy fresh
                     //          create HTTPResponeObject
                     //          return response
-                    
-
                     
                     req.FormatRequest(buff);
                     std::cout << "Full request: " << buff << std::endl;

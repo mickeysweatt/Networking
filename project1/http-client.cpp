@@ -10,6 +10,8 @@
 #include "http-request.h"
 #include "http-response.h"
 
+#define BUFFER_SIZE 8096
+
 HttpClient::HttpClient(std::string h, unsigned short p){
   //Formats the hostname that is passed in as a string into a char array
   hostname = new char[h.length() + 1];
@@ -42,7 +44,8 @@ static int sendall(int sockfd, const char *buf, ssize_t *len)
 
 HttpClient::~HttpClient() 
 {
-  close(sockfd);
+    delete [] hostname;
+    delete [] port;
 }
 
 int HttpClient::createConnection()
@@ -85,14 +88,16 @@ int HttpClient::createConnection()
         }
         break;
     }
-    struct timeval tv = {10, 0};
+    
+    struct timeval tv = {25, 0};
 
     setsockopt(sockfd, 
                SOL_SOCKET, 
                SO_RCVTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
-  //None of the entries were valid
+  
+    //None of the entries were valid
   if(p == NULL){
     std::cout << "Failed to connect" << std::endl;
     return -1;
@@ -107,7 +112,7 @@ int HttpClient::sendRequest(HttpRequest& request)
   //number of bytes actually sent
   ssize_t numBytes;
   //Receiving buffer
-  char recvbuf[8096];
+  char recvbuf[BUFFER_SIZE];
   std::string response_str;
   //request
   char* sendbuf = new char[request.GetTotalLength()];
@@ -131,7 +136,7 @@ int HttpClient::sendRequest(HttpRequest& request)
   //client gets response from server
   do 
   {
-       if ((numBytes = recv(sockfd, recvbuf, 8096, 0)) == -1)
+       if ((numBytes = recv(sockfd, recvbuf, BUFFER_SIZE, 0)) == -1)
        {
             perror("recv");
         }
@@ -139,11 +144,16 @@ int HttpClient::sendRequest(HttpRequest& request)
         {
             //stores the data received into result string
             std::string buf(recvbuf, numBytes);
-            response_str += buf; 
+            response_str += buf;
+            // if (numBytes < BUFFER_SIZE)
+            // {
+                // break;
+            // }
             //std::cout << response << std::endl;
         }
         else if(numBytes == 0)
         {
+            close(sockfd);
             std::cout << "CLIENT: Connection closed" << std::endl;
         }
         else
@@ -156,6 +166,7 @@ int HttpClient::sendRequest(HttpRequest& request)
   //std::cout << response_str << std::endl;
   // parses headers and returns pointer to beginning of body
   response->ParseResponse(response_str.c_str(), response_str.length());
+  delete [] sendbuf;
   return 0;
 }
 

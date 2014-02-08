@@ -49,10 +49,10 @@ int main(void)
     // main loop
     while (server.acceptConnection() >= 0);
     
-    /*
+    
     HttpRequest req;
     HttpResponse response;
-    std::string r = "GET http://127.0.0.1:10005/basic HTTP/1.1 \r\n\r\n";
+    std::string r = "GET http://cs.ucla.edu/classes/fall13/cs111/news.html HTTP/1.1 \r\n\r\n";
     req.ParseRequest(r.c_str(), r.length());
     r = req.GetHost();
     unsigned short port = req.GetPort();
@@ -64,10 +64,12 @@ int main(void)
     client.sendRequest(req);    
     response = client.getResponse();
     ssize_t response_size = response.GetTotalLength();
-    char *response_str = new char [response_size];
+    char *response_str = new char [response_size + 1];
     response.FormatResponse(response_str);
+    response_str[response_size] = '\0';
+    response_str[response_size] = '\0';
     printf("%s\n", response_str);
-    */
+    
     
     return 0;
 }
