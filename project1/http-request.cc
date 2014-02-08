@@ -243,8 +243,20 @@ HttpRequest::SetHost (const std::string &host)
     size_t pos = 0;
     if ((pos = host.find("www.") == std::string::npos))
     {
-        m_host = "www." + host.substr(pos - 1);
+        m_host = host.substr(pos - 1);
     }
+    else
+    {
+        m_host = host.substr(pos+4);
+    }
+    
+    if ((pos = host.find("http://")  != std::string::npos) ||
+        (pos = host.find("https://") != std::string::npos))
+    {
+        pos = host.find("//");
+        m_host = host.substr(pos+2);
+    }
+    
     if (m_port != 80)
     {
       ModifyHeader ("Host", m_host + ":" + boost::lexical_cast<string> (m_port));

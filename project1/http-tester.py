@@ -4,7 +4,7 @@ from threading import Thread
 from httplib import HTTPConnection
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from datetime import datetime, timedelta
-#from bcolor import bcolors
+from bcolor import bcolors
 import sys
 import time
 
@@ -172,7 +172,7 @@ client1 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/ba
 client1.start()
 client1.join()
 if client1.result:
-    print "Basic object fetching: [" + bcolors.PASS + "PASSED" + bcolors.ENDC + "]" 
+    print "Basic object fetching: [" + "PASSED" + "]" 
 else: 
     print "Basic object fetching: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]" 
 
@@ -201,7 +201,7 @@ cdata = datafile.read()
 if(end - start) < 4 and client3.data == cdata and client4.data == cdata:
     r = True
 if r:
-    print "Concurrent Connection: [" + bcolors.PASS + "PASSED" + bcolors.ENDC + "]"
+    print "Concurrent Connection: [" + "PASSED" + "]"
 else:
     print "Concurrent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 

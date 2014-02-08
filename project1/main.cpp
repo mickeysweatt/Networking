@@ -52,17 +52,22 @@ int main(void)
     /*
     HttpRequest req;
     HttpResponse response;
-    std::string r = "GET http://cs.ucla.edu/classes/fall13/cs111/grading.html HTTP/1.1 \r\n\r\n";
+    std::string r = "GET http://127.0.0.1:10005/basic HTTP/1.1 \r\n\r\n";
     req.ParseRequest(r.c_str(), r.length());
     r = req.GetHost();
     unsigned short port = req.GetPort();
     HttpClient client(r, port);
-    client.createConnection();
+    if (client.createConnection() < 0)
+    {
+        return -1;
+    }
     client.sendRequest(req);    
     response = client.getResponse();
     ssize_t response_size = response.GetTotalLength();
     char *response_str = new char [response_size];
-    //printf("%s\n", response_str);
+    response.FormatResponse(response_str);
+    printf("%s\n", response_str);
     */
+    
     return 0;
 }

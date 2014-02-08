@@ -127,7 +127,7 @@ int HTTPServer::acceptConnection()
         perror("listen");
         exit(1);
     }
-    
+    int status = -1;
     socklen_t sin_size;
     struct sockaddr_storage their_addr; // connector's address information
     int new_fd; // new connection on new_fd
@@ -182,8 +182,8 @@ int HTTPServer::acceptConnection()
             }
             if (request_size > 0 && errno != EAGAIN)
             {
-                buff[request_size++] = 0xd;
-                buff[request_size++] = 0xa;
+                //buff[request_size++] = 0xd;
+                //buff[request_size++] = 0xa;
 
                 try 
                 {
@@ -216,12 +216,16 @@ int HTTPServer::acceptConnection()
                     std::cout << "Full request: " << buff << std::endl;
                     // create an HTTPClient Object
                     
-                    
-                    
                     HttpClient client(req.GetHost(), req.GetPort());
-                    client.createConnection();
+                    if ((status = client.createConnection()) != 0)
+                    {
+                        return status;
+                    }
                     // pass in HTTPRequest, and have get the page
-                    client.sendRequest(req);
+                    if (status = client.sendRequest(req))
+                    {
+                        return status;
+                    }
                     // create HTTPResponeObject
                     response = client.getResponse();
                     ssize_t response_size = response.GetTotalLength();

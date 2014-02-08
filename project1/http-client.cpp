@@ -53,13 +53,13 @@ int HttpClient::createConnection()
   struct addrinfo* p;
   
   memset(&hints, 0, sizeof(hints));  // clears the hints structure
-  hints.ai_family = AF_UNSPEC;  //connection can be IPv4 or IPv6
+  hints.ai_family = AF_INET;  //connection can be IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM; // specify TCP connection
-
+  
   //checks if there was succesful retrieval of server info
   if((status = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) 
   {
-    std::cout << "Can't get server info" << std::endl;
+    perror("getaddressinfo");
     return status;
   }
   
@@ -69,23 +69,23 @@ int HttpClient::createConnection()
        1) create a socket
        2) connect sockets
   */
-   for(p = servinfo; p != NULL; p = p->ai_next)
-   {
-     //attempts to create socket
-     if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
-       std::cout << "Can't create socket" << std::endl;
-       continue;
-     }
-     
-     //attempts to connect to the server
-     if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
-       std::cout << "Can't connect to server" << std::endl;
-       close(sockfd);
-       continue;
-     }
-     break;
-   }
-    struct timeval tv = {4, 0};
+    for(p = servinfo; p != NULL; p = p->ai_next)
+    {
+        //attempts to create socket
+        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
+            std::cout << "Can't create socket" << std::endl;
+            continue;
+        }
+
+        //attempts to connect to the server
+        if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
+            perror("connect");
+            close(sockfd);
+            continue;
+        }
+        break;
+    }
+    struct timeval tv = {10, 0};
 
     setsockopt(sockfd, 
                SOL_SOCKET, 
@@ -107,7 +107,7 @@ int HttpClient::sendRequest(HttpRequest& request)
   //number of bytes actually sent
   ssize_t numBytes;
   //Receiving buffer
-  char recvbuf[512];
+  char recvbuf[8096];
   std::string response_str;
   //request
   char* sendbuf = new char[request.GetTotalLength()];
@@ -131,7 +131,7 @@ int HttpClient::sendRequest(HttpRequest& request)
   //client gets response from server
   do 
   {
-       if ((numBytes = recv(sockfd, recvbuf, 512, 0)) == -1)
+       if ((numBytes = recv(sockfd, recvbuf, 8096, 0)) == -1)
        {
             perror("recv");
         }
@@ -150,7 +150,8 @@ int HttpClient::sendRequest(HttpRequest& request)
         {
             std::cout << "CLIENT: Receive failed" << std::endl;
         }
-  } while(numBytes > 0);
+  } 
+  while(numBytes > 0);//.&& numBytes == 8096);
   response = new HttpResponse();
   //std::cout << response_str << std::endl;
   // parses headers and returns pointer to beginning of body
