@@ -20,7 +20,7 @@
 
 #define BACKLOG 20     // how many pending connections queue will hold
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 8096
 //==============================================================================
 //                    LOCAL FUNCTION DEFINITIONS
 //==============================================================================
