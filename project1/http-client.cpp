@@ -89,7 +89,7 @@ int HttpClient::createConnection()
         break;
     }
     
-    struct timeval tv = {25, 0};
+    struct timeval tv = {10, 0};
 
     setsockopt(sockfd, 
                SOL_SOCKET, 

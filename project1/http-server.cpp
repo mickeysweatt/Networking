@@ -47,7 +47,6 @@ static int sendall(int sockfd, const char *buf, ssize_t *len)
         total += n;
         bytesleft -= n;
     }
-
     *len = total; // return number actually sent here
 
     return n==-1?-1:0; // return -1 on failure, 0 on success
@@ -115,6 +114,18 @@ int HTTPServer::startServer(int port)
     }
 
     freeaddrinfo(servinfo); // all done with this structure
+    
+    struct timeval tv;
+
+    tv.tv_sec = 50;
+    tv.tv_usec = 500000;
+
+    setsockopt(sockfd, 
+               SOL_SOCKET, 
+               SO_RCVTIMEO, 
+               reinterpret_cast<char *>(&tv),
+               sizeof(struct timeval));
+               
     d_sockfd = sockfd;
     return 0;
 }
@@ -141,6 +152,17 @@ int HTTPServer::acceptConnection()
     new_fd = accept(d_sockfd, 
                     reinterpret_cast<struct sockaddr *>(&their_addr), 
                     &sin_size);
+    
+    // struct timeval tv;
+
+    // tv.tv_sec = 50;
+    // tv.tv_usec = 500000;
+
+    // setsockopt(new_fd, 
+               // SOL_SOCKET, 
+               // SO_RCVTIMEO, 
+               // reinterpret_cast<char *>(&tv),
+               // sizeof(struct timeval));
     if (new_fd == -1) 
     {
         perror("accept");
@@ -157,36 +179,22 @@ int HTTPServer::acceptConnection()
         close(d_sockfd); // child doesn't need the listener
         // this is where we actually get the request from the server and 
         // start to try to handle it
+        HttpRequest  req;        
+        HttpResponse response;
+        HttpClient* client = NULL;
         while (1) {
-            /*
-            strcpy(buff,"Write me a message: ");
-            request_size = strlen(buff);
-            if (sendall(new_fd, buff,&request_size) == -1)
-            {
-                perror("send");
-            }
-            */
-            struct timeval tv;
-
-            tv.tv_sec = 50;
-            tv.tv_usec = 500000;
-
-            setsockopt(new_fd, 
-                       SOL_SOCKET, 
-                       SO_RCVTIMEO, 
-                       reinterpret_cast<char *>(&tv),
-                       sizeof(struct timeval));
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
-                perror("recv");
+                perror("SERVER: recv");
+                close(new_fd);
+                exit(1);
             }
-            if (request_size > 0 && errno != EAGAIN)
+            
+            printf("Request: %s", buff);
+            if (request_size > 0)// && errno != EAGAIN)
             {
                 try 
                 {
-                    // create an HTTPRequest with data from buffer
-                    HttpRequest  req;        
-                    HttpResponse response;
                     req.ParseRequest(buff, request_size);
                     // validate the request
                     if (req.GetMethod() == HttpRequest::UNSUPPORTED)
@@ -201,6 +209,7 @@ int HTTPServer::acceptConnection()
                         {
                              perror("send");
                         }
+                        delete [] response_str;
                     }
                     // if in local cache
                     //      if cached copy fresh
@@ -209,20 +218,31 @@ int HTTPServer::acceptConnection()
                     
                     req.FormatRequest(buff);
                     std::cout << "Full request: " << buff << std::endl;
-                    // create an HTTPClient Object
                     
-                    HttpClient client(req.GetHost(), req.GetPort());
-                    if ((status = client.createConnection()) != 0)
+                    // create an HTTPClient Object
+                    if (NULL == client)
                     {
-                        return status;
+                        client = new HttpClient(req.GetHost(), req.GetPort());
+                    }
+                    if ((status = client->createConnection()) != 0)
+                    {
+                        if (client)
+                        {
+                            delete client;
+                        }
+                        exit(status);
                     }
                     // pass in HTTPRequest, and have get the page
-                    if (status = client.sendRequest(req))
+                    if ((status = client->sendRequest(req)) != 0)
                     {
-                        return status;
+                        if (client)
+                        {
+                            delete client;
+                        }
+                        exit(status);
                     }
                     // create HTTPResponeObject
-                    response = client.getResponse();
+                    response = client->getResponse();
                     ssize_t response_size = response.GetTotalLength();
                     char *response_str = new char [response_size];
                     response.FormatResponse(response_str);
@@ -233,6 +253,7 @@ int HTTPServer::acceptConnection()
                     {
                          perror("send");
                     }
+                    delete [] response_str;
                 }
                 catch (ParseException e)
                 {
@@ -246,6 +267,10 @@ int HTTPServer::acceptConnection()
                     }
                     printf("server: closed connection from %s\n", s);
                     close(new_fd);
+                    if (client)
+                    {
+                        delete client;
+                    }
                     exit(1);
                 }
             }
@@ -256,6 +281,10 @@ int HTTPServer::acceptConnection()
                 if (sendall(new_fd, buff,&request_size) == -1)
                 {
                     perror("send");
+                }
+                if (client)
+                {
+                    delete client;
                 }
                 close(new_fd);
                 exit(0);

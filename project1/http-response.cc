@@ -112,8 +112,8 @@ HttpResponse::FormatResponse (char *buffer) const
 
     bufLastPos = HttpHeaders::FormatHeaders (bufLastPos);
     bufLastPos = stpncpy (bufLastPos, "\r\n", 2);
-    bufLastPos = stpncpy (bufLastPos, m_body.c_str (), m_body.size ());
-    
+    bufLastPos = stpncpy (bufLastPos, m_body.c_str (), m_body.size());
+    bufLastPos = stpncpy (bufLastPos, "\r\n", 2);
     return bufLastPos;
 }
 
