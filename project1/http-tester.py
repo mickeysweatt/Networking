@@ -210,20 +210,20 @@ if r:
 else:
    print "Concurrent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 
-# client5 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
-# client5.start()
-# client5.join()
-# time.sleep(2)
-# client6 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
-# client6.start()
-# client6.join()
-# r = False
-# if client5.data == client6.data and client5.data != "":
-    # r = True
-# if r:
-    # print "Caching: [" + bcolors.PASS + "PASSED" + bcolors.ENDC + "]"
-# else:
-    # print "Caching: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
+client5 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
+client5.start()
+client5.join()
+time.sleep(2)
+client6 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
+client6.start()
+client6.join()
+r = False
+if client5.data == client6.data and client5.data != "":
+    r = True
+if r:
+    print "Caching: [" + bcolors.PASS + "PASSED" + bcolors.ENDC + "]"
+else:
+    print "Caching: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 
 server1.server.shutdown()
 server2.server.shutdown()

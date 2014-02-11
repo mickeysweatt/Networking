@@ -160,6 +160,9 @@ public:
   void
   SetVersion (const std::string &version);
   
+  const std::string
+  GetRequestURL() const;
+  
 private:
   MethodEnum  m_method;
   std::string m_host;

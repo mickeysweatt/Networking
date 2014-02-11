@@ -308,3 +308,9 @@ HttpRequest::SetVersion (const std::string &version)
 {
   m_version = version;
 }
+
+const std::string
+HttpRequest::GetRequestURL() const
+{
+    return m_host + "+" + m_path.substr(1);
+}

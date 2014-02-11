@@ -96,6 +96,9 @@ public:
   void 
   SetBody(const std::string &body);
   
+  const std::string&
+  GetRequestURL() const;
+  
   const std::string& GetBody() const;
   
 private:
