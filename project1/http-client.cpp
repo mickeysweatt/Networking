@@ -150,15 +150,15 @@ int HttpClient::createConnection()
         break;
     }
 
-/*    
-    struct timeval tv = {10, 0};
+    
+    struct timeval tv = {50, 0};
 
     setsockopt(sockfd, 
                SOL_SOCKET, 
                SO_RCVTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
-*/  
+  
     //None of the entries were valid
   if(p == NULL){
     std::cout << "Failed to connect" << std::endl;
