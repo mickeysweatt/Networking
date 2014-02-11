@@ -192,6 +192,7 @@ int HTTPServer::acceptConnection()
         HttpResponse response;
         HttpClient* client = NULL;
         HttpCache cache;
+        std::string reqURL;
         while (1) {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
@@ -210,6 +211,7 @@ int HTTPServer::acceptConnection()
                 try 
                 {
                     req.ParseRequest(buff, request_size);
+                    reqURL = req.GetRequestURL();
                     // validate the request
                     if (req.GetMethod() == HttpRequest::UNSUPPORTED)
                     {
@@ -226,22 +228,21 @@ int HTTPServer::acceptConnection()
                         delete [] response_c_str;
                     }
                     // if in local cache
-                    /*
-                    if ()
+                    
+                    if (cache.isCached(reqURL))
                     {
                         std::string response_str;
                         cache.getFile(req.GetRequestURL(), &response_str);
                         response.ParseResponse(response_str.c_str(), 
                                                response_str.length());
                     }
-                    */
+                    
                     //      if cached copy fresh
                     //          create HTTPResponeObject
                     //          return response
                     
                     else
-                    {
-                        cache.isCached(req.GetRequestURL());
+                    {                        
                         req.FormatRequest(buff);
                         std::cout << "Full request: " << buff << std::endl;
                         
