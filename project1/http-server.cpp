@@ -6,6 +6,7 @@
 #include "http-response.h"
 #include "http-headers.h"
 #include "http-client.h"
+#include "http-cache.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -117,7 +118,7 @@ int HTTPServer::startServer(int port)
     
     struct timeval tv;
 
-    tv.tv_sec = 50;
+    tv.tv_sec = 20;
     tv.tv_usec = 500000;
 
     setsockopt(sockfd, 
@@ -155,25 +156,28 @@ int HTTPServer::acceptConnection()
         new_fd = accept(d_sockfd, 
                         reinterpret_cast<struct sockaddr *>(&their_addr), 
                         &sin_size);
-    
-        struct timeval tv;
-
-        tv.tv_sec  = 50;
-        tv.tv_usec = 500000;
-
-        setsockopt(new_fd, 
-                   SOL_SOCKET, 
-                   SO_RCVTIMEO, 
-                   reinterpret_cast<char *>(&tv),
-                   sizeof(struct timeval));
         if (-1 == new_fd) 
         {
             perror("accept");
             fail_ctr++;
         }
+        if (fail_ctr >= 5)
+        {
+            return -1;
+        }
     }
     while (fail_ctr < 5 && -1 == new_fd);
+    
+    struct timeval tv;
 
+    tv.tv_sec  = 20;
+    tv.tv_usec = 500000;
+    setsockopt(new_fd, 
+               SOL_SOCKET, 
+               SO_RCVTIMEO, 
+               reinterpret_cast<char *>(&tv),
+               sizeof(struct timeval));
+    
     inet_ntop(their_addr.ss_family,
               get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
               s, 
@@ -187,11 +191,17 @@ int HTTPServer::acceptConnection()
         HttpRequest  req;        
         HttpResponse response;
         HttpClient* client = NULL;
+        HttpCache cache;
         while (1) {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
                 perror("SERVER: recv");
                 close(new_fd);
+                if (client)
+                {
+                    delete client;
+                    client = NULL;
+                }
                 exit(1);
             }
             
@@ -204,49 +214,63 @@ int HTTPServer::acceptConnection()
                     if (req.GetMethod() == HttpRequest::UNSUPPORTED)
                     {
                         response.SetStatusCode("501");
-                        ssize_t response_size = response.GetTotalLength();
-                        char *response_str = new char [response_size];
-                        response.FormatResponse(response_str);
+                        ssize_t response_size   = response.GetTotalLength();
+                        char    *response_c_str = new char [response_size];
+                        response.FormatResponse(response_c_str);
                         if (sendall(new_fd,
-                                 response_str,
+                                 response_c_str,
                                  &response_size) == -1) 
                         {
                              perror("send");
                         }
-                        delete [] response_str;
+                        delete [] response_c_str;
                     }
                     // if in local cache
+                    /*
+                    if (cache.isCached(req.GetRequestURL()))
+                    {
+                        std::string response_str;
+                        cache.getFile(req.GetRequestURL(), &response_str);
+                        response.ParseResponse(response_str.c_str(), 
+                                               response_str.length());
+                    }
+                    */
                     //      if cached copy fresh
                     //          create HTTPResponeObject
                     //          return response
-                    
-                    req.FormatRequest(buff);
-                    std::cout << "Full request: " << buff << std::endl;
-                    
-                    // create an HTTPClient Object
-                    if (NULL == client)
+                    else
                     {
-                        client = new HttpClient(req.GetHost(), req.GetPort());
-                    	if ((status = client->createConnection()) != 0)
-                    	{
+                        req.FormatRequest(buff);
+                        std::cout << "Full request: " << buff << std::endl;
+                        
+                        // create an HTTPClient Object
+                        if (NULL == client)
+                        {
+                            client = new HttpClient(req.GetHost(), req.GetPort());
+                            if ((status = client->createConnection()) != 0)
+                            {
+                                if (client)
+                                {
+                                    delete client;
+                                    client = NULL;
+                                }
+                                exit(status);
+                            }    
+                        }
+                        // pass in HTTPRequest, and have get the page
+                        if ((status = client->sendRequest(req)) != 0)
+                        {
                             if (client)
                             {
                                 delete client;
+                                client = NULL;
                             }
                             exit(status);
-                        }    
-                    }
-                    // pass in HTTPRequest, and have get the page
-                    if ((status = client->sendRequest(req)) != 0)
-                    {
-                        if (client)
-                        {
-                            delete client;
                         }
-                        exit(status);
+                        response = client->getResponse();
                     }
                     // create HTTPResponeObject
-                    response = client->getResponse();
+                    
                     ssize_t response_size = response.GetTotalLength();
                     char *response_str = new char [response_size];
                     response.FormatResponse(response_str);
@@ -274,6 +298,7 @@ int HTTPServer::acceptConnection()
                     if (client)
                     {
                         delete client;
+                        client = NULL;
                     }
                     exit(1);
                 }
@@ -289,6 +314,7 @@ int HTTPServer::acceptConnection()
                 if (client)
                 {
                     delete client;
+                    client = NULL;
                 }
                 close(new_fd);
                 exit(0);
