@@ -23,11 +23,8 @@ HttpClient::HttpClient(std::string h, unsigned short p){
   {
     perror("sprintf");
   }
-  //Initializes sockfd
+  //CHECK IF THIS IS RIGHT!!!!
   sockfd = -1;
-
-  //Initializes response
-  response = NULL;
 }
 
 static int sendall(int sockfd, const char *buf, ssize_t *len)
@@ -48,7 +45,6 @@ static int sendall(int sockfd, const char *buf, ssize_t *len)
     return n==-1?-1:0; // return -1 on failure, 0 on success
 } 
 
-/*
 static int findContentLength(std::string response_header)
 {
     int result;
@@ -92,7 +88,11 @@ static int findContentLength(std::string response_header)
 
     //std::cout << "This is the content length:" << contentLength << std::endl;
 }
-*/
+
+
+
+
+
 
 
 
@@ -150,15 +150,15 @@ int HttpClient::createConnection()
         break;
     }
 
-    
-    struct timeval tv = {50, 0};
+/*    
+    struct timeval tv = {10, 0};
 
     setsockopt(sockfd, 
                SOL_SOCKET, 
                SO_RCVTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
-  
+*/  
     //None of the entries were valid
   if(p == NULL){
     std::cout << "Failed to connect" << std::endl;
@@ -203,14 +203,13 @@ int HttpClient::sendRequest(HttpRequest& request)
   //total number of bytes received
   ssize_t totalBytes = 0;
   size_t contentLength = 0; 
-  bool headerFound = false;
 
   //client gets response from server
   // NOTE TO MATT: We could change the HttPesponse to have a method "ParseHeaders (mostly implemented)
   // We would need to add a method to "find A header"
   // And then just use set body to parse the rest of it
   // so in the bdoy when you find the end of the header, call ParseHeaders
-  // then search for teh content length header
+  // then search for the content length header
   // then use that value to do your thing
   // later, when you have the body, put it in with SetBody outside the loop
   do 
@@ -226,21 +225,16 @@ int HttpClient::sendRequest(HttpRequest& request)
             std::string buf(recvbuf, numBytes);
             response_str += buf;
             totalBytes += numBytes;
-            
-            //header is found
-            if(!headerFound && ((endHeaderPos = response_str.find("\r\n\r")) != std::string::npos))
+
+            if((endHeaderPos = response_str.find("\r\n\r")) != std::string::npos)
             {
-                //create the HTTPResponse object
-                //call ParseResponse on the header
-                //use the findheader function to obtain the length
-                response = new HttpResponse();
-                response->ParseResponse(response_str.c_str(), endHeaderPos+4);
-                contentLength = atoi(response->FindHeader("Content-Length").c_str());
-                headerFound = true;
                 //check if its a valid response
                 //if it is a valid response return the content length as an int
-                //contentLength = findContentLength(response_str);
+                contentLength = findContentLength(response_str);
             }
+            //if(response_str.find("\r\n\r") != std::string::npos){
+            //    endHeaderPos = response_str.find("\r\n\r");
+            //}
         }
         else if(numBytes == 0)
         {
@@ -256,24 +250,15 @@ int HttpClient::sendRequest(HttpRequest& request)
         //std::cout << "numBytes: " << numBytes << std::endl;
 
         //checks if server is done sending the response
-        //std::cout << "This is totalBytes: " << totalBytes << std::endl;
-        //std::cout << "This is endHeaderPos: " << endHeaderPos << std::endl;
-        //std::cout << "This is contentLength: " << contentLength << std::endl;
         if((totalBytes - (endHeaderPos+4)) == contentLength)
         {
             break;
         }
   } 
   while(numBytes > 0);
-
-  //checks if response was intialized
-  if(response != NULL)
-  {
-      response->SetBody(response_str.substr(endHeaderPos+4));
-  }
-  else
-      return -1;
-
+  response = new HttpResponse();
+  // parses headers and returns pointer to beginning of body
+  response->ParseResponse(response_str.c_str(), response_str.length());
   delete [] sendbuf;
   return 0;
 }

@@ -53,11 +53,28 @@ static int sendall(int sockfd, const char *buf, ssize_t *len)
     return n==-1?-1:0; // return -1 on failure, 0 on success
 } 
 
-namespace mrm {
                         // ----------
                         // HTTPServer
                         // ----------
+// =============================================================================
+//                          INLINE FUNCTION DEFINITIONS
+// =============================================================================
 
+namespace mrm {
+
+// CREATORS
+HTTPServer::HTTPServer() : d_sockfd(-1)
+{
+    d_cache_p = new HttpCache();
+}
+
+
+HTTPServer::~HTTPServer()
+{   
+    delete d_cache_p;
+}
+
+                        
 // MANIPULATORS
 int HTTPServer::startServer(int port)
 {
@@ -114,7 +131,7 @@ int HTTPServer::startServer(int port)
         break;
     }
 
-    freeaddrinfo(servinfo); // all done with this structure
+    freeaddrinfo(servinfo);
     
     struct timeval tv;
 
@@ -149,24 +166,20 @@ int HTTPServer::acceptConnection()
     memset(buff,0, BUFFER_SIZE);
      
     sin_size = sizeof(their_addr);
-    // blocks!!!
     size_t fail_ctr = 0;
     do
     {
         new_fd = accept(d_sockfd, 
                         reinterpret_cast<struct sockaddr *>(&their_addr), 
                         &sin_size);
-        if (-1 == new_fd) 
-        {
-            perror("accept");
-            fail_ctr++;
-        }
-        if (fail_ctr >= 5)
-        {
-            return -1;
-        }
     }
-    while (fail_ctr < 5 && -1 == new_fd);
+    while (fail_ctr++ < 5 && -1 == new_fd);
+    
+    if (-1 == new_fd) 
+    {
+        perror("accept");
+        return -1;
+    }
     
     struct timeval tv;
 
@@ -191,7 +204,6 @@ int HTTPServer::acceptConnection()
         HttpRequest  req;        
         HttpResponse response;
         HttpClient* client = NULL;
-        HttpCache cache;
         std::string reqURL;
         char *response_str;
         bool addToCache = true;
@@ -230,11 +242,11 @@ int HTTPServer::acceptConnection()
                         delete [] response_str;
                     }
                     // if in local cache
-                    else if (cache.isCached(reqURL))
+                    else if (d_cache_p->isCached(reqURL))
                     {
                         addToCache = false;
                         std::string cache_response;
-                        cache.getFile(req.GetRequestURL(), &cache_response);
+                        d_cache_p->getFile(req.GetRequestURL(), &cache_response);
                         response.ParseResponse(cache_response.c_str(), 
                                                cache_response.length());
                     }
@@ -280,7 +292,7 @@ int HTTPServer::acceptConnection()
                     {
                         response_str[response_size] = '\0';
                         std::string r(response_str);
-                        cache.cacheFile(reqURL, r);
+                        d_cache_p->cacheFile(reqURL, r);
                     }
                     // return response
                     if (sendall(new_fd,

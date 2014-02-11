@@ -6,6 +6,7 @@
 //
 //@Classes: 
 //  mrm::HTTPServer: a simple cached http-proxy server
+class HttpCache;
 
 namespace mrm {
 
@@ -20,14 +21,15 @@ class HTTPServer {
     
     // DATA
     private:
-        int d_sockfd;       // the file descriptor for the listening socket
-    
+        int d_sockfd;           // the file descriptor for the listening socket
+        
+        HttpCache *d_cache_p;  //  a pointer to the instance of the HttpCache
     public:
         // CREATORS
         explicit HTTPServer();
             // Creates a HTTPServer object with the default options.
             
-        //~HTTPServer() = default;
+        ~HTTPServer();
             // Destroy this object
 
         // ACCESSORS
@@ -54,12 +56,6 @@ class HTTPServer {
 // =============================================================================
 
 namespace mrm {
-
-// CREATORS
-inline
-HTTPServer::HTTPServer() : d_sockfd(-1)
-{
-}
 
 // ACCESSORS
 inline 
