@@ -23,8 +23,11 @@ HttpClient::HttpClient(std::string h, unsigned short p){
   {
     perror("sprintf");
   }
-  //CHECK IF THIS IS RIGHT!!!!
+  //Initializes sockfd
   sockfd = -1;
+
+  //Initializes response
+  response = NULL;
 }
 
 static int sendall(int sockfd, const char *buf, ssize_t *len)
@@ -203,6 +206,7 @@ int HttpClient::sendRequest(HttpRequest& request)
   //total number of bytes received
   ssize_t totalBytes = 0;
   size_t contentLength = 0; 
+  bool headerFound = false;
 
   //client gets response from server
   // NOTE TO MATT: We could change the HttPesponse to have a method "ParseHeaders (mostly implemented)
@@ -225,12 +229,20 @@ int HttpClient::sendRequest(HttpRequest& request)
             std::string buf(recvbuf, numBytes);
             response_str += buf;
             totalBytes += numBytes;
-
-            if((endHeaderPos = response_str.find("\r\n\r")) != std::string::npos)
+            
+            //header is found
+            if(!headerFound && ((endHeaderPos = response_str.find("\r\n\r")) != std::string::npos))
             {
+                //create the HTTPResponse object
+                //call ParseResponse on the header
+                //use the findheader function to obtain the length
+                response = new HttpResponse();
+                response->ParseResponse(response_str.c_str(), endHeaderPos+4);
+                contentLength = atoi(response->FindHeader("Content-Length").c_str());
+                headerFound = true;
                 //check if its a valid response
                 //if it is a valid response return the content length as an int
-                contentLength = findContentLength(response_str);
+                //contentLength = findContentLength(response_str);
             }
             //if(response_str.find("\r\n\r") != std::string::npos){
             //    endHeaderPos = response_str.find("\r\n\r");
@@ -250,15 +262,27 @@ int HttpClient::sendRequest(HttpRequest& request)
         //std::cout << "numBytes: " << numBytes << std::endl;
 
         //checks if server is done sending the response
+        //std::cout << "This is totalBytes: " << totalBytes << std::endl;
+        //std::cout << "This is endHeaderPos: " << endHeaderPos << std::endl;
+        //std::cout << "This is contentLength: " << contentLength << std::endl;
         if((totalBytes - (endHeaderPos+4)) == contentLength)
         {
             break;
         }
   } 
   while(numBytes > 0);
-  response = new HttpResponse();
+  //response = new HttpResponse();
   // parses headers and returns pointer to beginning of body
-  response->ParseResponse(response_str.c_str(), response_str.length());
+  //response->ParseResponse(response_str.c_str(), response_str.length());
+
+  //checks if response was intialized
+  if(response != NULL)
+  {
+      response->SetBody(response_str.substr(endHeaderPos+4));
+  }
+  else
+      return -1;
+
   delete [] sendbuf;
   return 0;
 }
