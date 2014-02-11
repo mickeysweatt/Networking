@@ -232,7 +232,6 @@ int HTTPServer::acceptConnection()
                     // if in local cache
                     else if (cache.isCached(reqURL))
                     {
-                        printf("IM CACHED\n");
                         addToCache = false;
                         std::string cache_response;
                         cache.getFile(req.GetRequestURL(), &cache_response);
