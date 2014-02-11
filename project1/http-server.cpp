@@ -149,25 +149,30 @@ int HTTPServer::acceptConnection()
      
     sin_size = sizeof(their_addr);
     // blocks!!!
-    new_fd = accept(d_sockfd, 
-                    reinterpret_cast<struct sockaddr *>(&their_addr), 
-                    &sin_size);
-    
-    // struct timeval tv;
-
-    // tv.tv_sec = 50;
-    // tv.tv_usec = 500000;
-
-    // setsockopt(new_fd, 
-               // SOL_SOCKET, 
-               // SO_RCVTIMEO, 
-               // reinterpret_cast<char *>(&tv),
-               // sizeof(struct timeval));
-    if (new_fd == -1) 
+    size_t fail_ctr = 0;
+    do
     {
-        perror("accept");
-        return -1;
+        new_fd = accept(d_sockfd, 
+                        reinterpret_cast<struct sockaddr *>(&their_addr), 
+                        &sin_size);
+    
+        struct timeval tv;
+
+        tv.tv_sec  = 50;
+        tv.tv_usec = 500000;
+
+        setsockopt(new_fd, 
+                   SOL_SOCKET, 
+                   SO_RCVTIMEO, 
+                   reinterpret_cast<char *>(&tv),
+                   sizeof(struct timeval));
+        if (-1 == new_fd) 
+        {
+            perror("accept");
+            fail_ctr++;
+        }
     }
+    while (fail_ctr < 5 && -1 == new_fd);
 
     inet_ntop(their_addr.ss_family,
               get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
@@ -190,7 +195,6 @@ int HTTPServer::acceptConnection()
                 exit(1);
             }
             
-            printf("Request: %s", buff);
             if (request_size > 0)// && errno != EAGAIN)
             {
                 try 
