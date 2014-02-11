@@ -171,13 +171,13 @@ server1.start()
 server2.start()
 
 
-# client1 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic")
-# client1.start()
-# client1.join()
-# if client1.result:
-    # print "Basic object fetching: [" + "PASSED" + "]" 
-# else: 
-    # print "Basic object fetching: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]" 
+client1 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic")
+client1.start()
+client1.join()
+if client1.result:
+    print "Basic object fetching: [" + bcolors.PASS +"PASSED" + bcolors.ENDC + "]" 
+else: 
+    print "Basic object fetching: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]" 
 
 client2 = ClientPersistThread("127.0.0.1:" + pport, 
                               "http://127.0.0.1:" + sport1 + "/basic", "./basic", 
@@ -189,26 +189,26 @@ if client2.result:
 else:
     print "Persistent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 
-# client3 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport1 +"/basic3", "./basic3")
-# client4 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport2 +"/basic3", "./basic3")
+#client3 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport1 +"/basic3", "./basic3")
+#client4 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport2 +"/basic3", "./basic3")
 
-# start = time.time()
-# client3.start()
-# client4.start()
+#start = time.time()
+#client3.start()
+#client4.start()
  
-# client3.join()
-# client4.join()
-# end = time.time()
+#client3.join()
+#client4.join()
+#end = time.time()
 
-# r = False
-# datafile = open("./basic3", "r")
-# cdata = datafile.read()
-# if(end - start) < 4 and client3.data == cdata and client4.data == cdata:
-    # r = True
-# if r:
-    # print "Concurrent Connection: [" + "PASSED" + "]"
-# else:
-    # print "Concurrent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
+#r = False
+#datafile = open("./basic3", "r")
+#cdata = datafile.read()
+#if(end - start) < 4 and client3.data == cdata and client4.data == cdata:
+#    r = True
+#if r:
+#    print "Concurrent Connection: [" + "PASSED" + "]"
+#else:
+#    print "Concurrent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 
 # client5 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
 # client5.start()

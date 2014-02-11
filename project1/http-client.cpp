@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <sstream>
 #include "http-request.h"
 #include "http-response.h"
 
@@ -22,6 +23,8 @@ HttpClient::HttpClient(std::string h, unsigned short p){
   {
     perror("sprintf");
   }
+  //CHECK IF THIS IS RIGHT!!!!
+  sockfd = -1;
 }
 
 static int sendall(int sockfd, const char *buf, ssize_t *len)
@@ -42,6 +45,58 @@ static int sendall(int sockfd, const char *buf, ssize_t *len)
     return n==-1?-1:0; // return -1 on failure, 0 on success
 } 
 
+static int findContentLength(std::string response_header)
+{
+    int result;
+    size_t contentLengthPos;
+    std::string contentLength = "";
+    
+    //checks if the response is OK
+    if(response_header.find("200") == std::string::npos)
+    {
+        return -1;
+    }
+    
+    //finds the beginning of the Content Length field
+    if((contentLengthPos = response_header.find("Content-Length:")) == 
+                           std::string::npos)
+    {
+        return -1;
+    }
+ 
+    //moves to the beginning of the number that is specified by field
+    contentLengthPos += 16;
+
+    //reads in the content length
+    while(response_header[contentLengthPos] != '\n')
+    {
+         if(isdigit(response_header[contentLengthPos]))
+         { 
+             //std::cout << "This is getting stored: " << 
+             //      response_header[contentLengthPos] << std::endl;
+             contentLength += response_header[contentLengthPos];
+         }
+         contentLengthPos++;
+    }
+
+
+    //convert the content length from string to actual integer
+    std::istringstream buffer(contentLength);
+    buffer >> result;
+    //std::cout << "This is result: " << result << std::endl;
+    return result;
+
+    //std::cout << "This is the content length:" << contentLength << std::endl;
+}
+
+
+
+
+
+
+
+
+
 HttpClient::~HttpClient() 
 {
     delete [] hostname;
@@ -50,6 +105,10 @@ HttpClient::~HttpClient()
 
 int HttpClient::createConnection()
 {
+  //CHECK IF THIS IS RIGHT!!!
+  //if(sockfd > 0)
+  //  return 0;
+
   int status;
 
   //used to traverse the linkedlist returned from getaddrinfo function
@@ -75,11 +134,13 @@ int HttpClient::createConnection()
     for(p = servinfo; p != NULL; p = p->ai_next)
     {
         //attempts to create socket
-        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
+        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        {
             std::cout << "Can't create socket" << std::endl;
             continue;
         }
-
+         
+         
         //attempts to connect to the server
         if(connect(sockfd, p->ai_addr, p->ai_addrlen) == -1){
             perror("connect");
@@ -88,7 +149,8 @@ int HttpClient::createConnection()
         }
         break;
     }
-    
+
+/*    
     struct timeval tv = {10, 0};
 
     setsockopt(sockfd, 
@@ -96,7 +158,7 @@ int HttpClient::createConnection()
                SO_RCVTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
-  
+*/  
     //None of the entries were valid
   if(p == NULL){
     std::cout << "Failed to connect" << std::endl;
@@ -109,6 +171,7 @@ int HttpClient::createConnection()
 
 int HttpClient::sendRequest(HttpRequest& request)
 {
+  //std::cout << "SENDREQUEST IS GETTING CALLED!!!!!" << std::endl;
   //number of bytes actually sent
   ssize_t numBytes;
   //Receiving buffer
@@ -125,6 +188,8 @@ int HttpClient::sendRequest(HttpRequest& request)
   {
     perror("send");
   }
+
+  //std::cout << "GETS PASSED FIRST CHECKPOINT" << std::endl;
   
   //check if send failed
   if(numBytes == -1){
@@ -132,10 +197,24 @@ int HttpClient::sendRequest(HttpRequest& request)
     close(sockfd);
     return -1;
   }
+ 
+  //the position of the end of the header
+  size_t endHeaderPos = -1;
+  //total number of bytes received
+  ssize_t totalBytes = 0;
+  size_t contentLength = 0; 
 
   //client gets response from server
+  // NOTE TO MATT: We could change the HttPesponse to have a method "ParseHeaders (mostly implemented)
+  // We would need to add a method to "find A header"
+  // And then just use set body to parse the rest of it
+  // so in the bdoy when you find the end of the header, call ParseHeaders
+  // then search for teh content length header
+  // then use that value to do your thing
+  // later, when you have the body, put it in with SetBody outside the loop
   do 
   {
+       //std::cout << "GETS PASSED SECOND CHECKPOINT!!!!!" << std::endl;
        if ((numBytes = recv(sockfd, recvbuf, BUFFER_SIZE, 0)) == -1)
        {
             perror("recv");
@@ -145,11 +224,17 @@ int HttpClient::sendRequest(HttpRequest& request)
             //stores the data received into result string
             std::string buf(recvbuf, numBytes);
             response_str += buf;
-            // if (numBytes < BUFFER_SIZE)
-            // {
-                // break;
-            // }
-            //std::cout << response << std::endl;
+            totalBytes += numBytes;
+
+            if((endHeaderPos = response_str.find("\r\n\r")) != std::string::npos)
+            {
+                //check if its a valid response
+                //if it is a valid response return the content length as an int
+                contentLength = findContentLength(response_str);
+            }
+            //if(response_str.find("\r\n\r") != std::string::npos){
+            //    endHeaderPos = response_str.find("\r\n\r");
+            //}
         }
         else if(numBytes == 0)
         {
@@ -160,10 +245,18 @@ int HttpClient::sendRequest(HttpRequest& request)
         {
             std::cout << "CLIENT: Receive failed" << std::endl;
         }
+
+        //std::cout << "Response_str: " << response_str << std::endl;
+        //std::cout << "numBytes: " << numBytes << std::endl;
+
+        //checks if server is done sending the response
+        if((totalBytes - (endHeaderPos+4)) == contentLength)
+        {
+            break;
+        }
   } 
-  while(numBytes > 0);//.&& numBytes == 8096);
+  while(numBytes > 0);
   response = new HttpResponse();
-  //std::cout << response_str << std::endl;
   // parses headers and returns pointer to beginning of body
   response->ParseResponse(response_str.c_str(), response_str.length());
   delete [] sendbuf;

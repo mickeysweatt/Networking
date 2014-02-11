@@ -223,14 +223,14 @@ int HTTPServer::acceptConnection()
                     if (NULL == client)
                     {
                         client = new HttpClient(req.GetHost(), req.GetPort());
-                    }
-                    if ((status = client->createConnection()) != 0)
-                    {
-                        if (client)
-                        {
-                            delete client;
-                        }
-                        exit(status);
+                    	if ((status = client->createConnection()) != 0)
+                    	{
+                            if (client)
+                            {
+                                delete client;
+                            }
+                            exit(status);
+                        }    
                     }
                     // pass in HTTPRequest, and have get the page
                     if ((status = client->sendRequest(req)) != 0)

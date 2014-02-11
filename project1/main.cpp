@@ -41,7 +41,8 @@ int main(void)
         pthread_create(&threads[i], NULL, print_message_function, NULL);
     }
     */
-    
+
+
     set_up_signal_handler();
     
     mrm::HTTPServer server;
@@ -49,7 +50,7 @@ int main(void)
     // main loop
     while (server.acceptConnection() >= 0);
     
-    
+/* 
     HttpRequest req;
     HttpResponse response;
     std::string r = "GET http://cs.ucla.edu/classes/fall13/cs111/news.html HTTP/1.1 \r\n\r\n";
@@ -69,7 +70,9 @@ int main(void)
     response_str[response_size] = '\0';
     response_str[response_size] = '\0';
     printf("%s\n", response_str);
-    
-    
+  */
+
+
+  
     return 0;
 }
