@@ -72,7 +72,7 @@ HttpResponse::ParseResponse (const char *buffer, size_t size)
     
     curPos = endline + 2;
     curPos =  ParseHeaders (curPos, size - (curPos-buffer));
-    //SetBody(string(curPos));
+    SetBody(string(curPos));
     return curPos + m_body.length();
 }
 
