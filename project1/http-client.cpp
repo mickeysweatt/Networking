@@ -48,6 +48,7 @@ static int sendall(int sockfd, const char *buf, ssize_t *len)
     return n==-1?-1:0; // return -1 on failure, 0 on success
 } 
 
+/*
 static int findContentLength(std::string response_header)
 {
     int result;
@@ -91,11 +92,7 @@ static int findContentLength(std::string response_header)
 
     //std::cout << "This is the content length:" << contentLength << std::endl;
 }
-
-
-
-
-
+*/
 
 
 
@@ -244,9 +241,6 @@ int HttpClient::sendRequest(HttpRequest& request)
                 //if it is a valid response return the content length as an int
                 //contentLength = findContentLength(response_str);
             }
-            //if(response_str.find("\r\n\r") != std::string::npos){
-            //    endHeaderPos = response_str.find("\r\n\r");
-            //}
         }
         else if(numBytes == 0)
         {
@@ -271,9 +265,6 @@ int HttpClient::sendRequest(HttpRequest& request)
         }
   } 
   while(numBytes > 0);
-  //response = new HttpResponse();
-  // parses headers and returns pointer to beginning of body
-  //response->ParseResponse(response_str.c_str(), response_str.length());
 
   //checks if response was intialized
   if(response != NULL)
