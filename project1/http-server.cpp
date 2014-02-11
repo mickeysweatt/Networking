@@ -118,7 +118,7 @@ int HTTPServer::startServer(int port)
     
     struct timeval tv;
 
-    tv.tv_sec = 20;
+    tv.tv_sec = 10;
     tv.tv_usec = 500000;
 
     setsockopt(sockfd, 
@@ -170,7 +170,7 @@ int HTTPServer::acceptConnection()
     
     struct timeval tv;
 
-    tv.tv_sec  = 20;
+    tv.tv_sec  = 10;
     tv.tv_usec = 500000;
     setsockopt(new_fd, 
                SOL_SOCKET, 
@@ -193,6 +193,8 @@ int HTTPServer::acceptConnection()
         HttpClient* client = NULL;
         HttpCache cache;
         std::string reqURL;
+        char *response_str;
+        bool addToCache = true;
         while (1) {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
@@ -217,32 +219,31 @@ int HTTPServer::acceptConnection()
                     {
                         response.SetStatusCode("501");
                         ssize_t response_size   = response.GetTotalLength();
-                        char    *response_c_str = new char [response_size];
-                        response.FormatResponse(response_c_str);
+                        response_str = new char [response_size];
+                        response.FormatResponse(response_str);
                         if (sendall(new_fd,
-                                 response_c_str,
-                                 &response_size) == -1) 
+                                    response_str,
+                                    &response_size) == -1) 
                         {
                              perror("send");
                         }
-                        delete [] response_c_str;
+                        delete [] response_str;
                     }
                     // if in local cache
-                    
-                    if (cache.isCached(reqURL))
+                    else if (cache.isCached(reqURL))
                     {
-                        std::string response_str;
-                        cache.getFile(req.GetRequestURL(), &response_str);
-                        response.ParseResponse(response_str.c_str(), 
-                                               response_str.length());
+                        printf("IM CACHED\n");
+                        addToCache = false;
+                        std::string cache_response;
+                        cache.getFile(req.GetRequestURL(), &cache_response);
+                        response.ParseResponse(cache_response.c_str(), 
+                                               cache_response.length());
                     }
                     
-                    //      if cached copy fresh
-                    //          create HTTPResponeObject
-                    //          return response
-                    
+                    // otherwise get to from origin server
                     else
                     {                        
+                        addToCache = true;
                         req.FormatRequest(buff);
                         std::cout << "Full request: " << buff << std::endl;
                         
@@ -273,10 +274,15 @@ int HTTPServer::acceptConnection()
                         response = client->getResponse();
                     }
                     // create HTTPResponeObject
-                    
                     ssize_t response_size = response.GetTotalLength();
-                    char *response_str = new char [response_size];
+                    response_str = new char [response_size];
                     response.FormatResponse(response_str);
+                    if (addToCache)
+                    {
+                        response_str[response_size] = '\0';
+                        std::string r(response_str);
+                        cache.cacheFile(reqURL, r);
+                    }
                     // return response
                     if (sendall(new_fd,
                                 response_str,

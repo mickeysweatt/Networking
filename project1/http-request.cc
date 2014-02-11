@@ -312,5 +312,5 @@ HttpRequest::SetVersion (const std::string &version)
 const std::string
 HttpRequest::GetRequestURL() const
 {
-    return m_host + m_path;
+    return m_host + "+" + m_path.substr(1);
 }
