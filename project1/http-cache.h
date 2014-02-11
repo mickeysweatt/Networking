@@ -9,7 +9,7 @@ class HttpCache
         HttpCache();
         
         bool 
-        isCached(const std::string url) const;
+        isCached(const std::string& url) const;
         
         int 
         getFile(const std::string& url, std::string* contents) const;
@@ -23,8 +23,6 @@ class HttpCache
 //                             INLINE FUNCTION DEFINITIONS   
 //==============================================================================
 
-inline HttpCache::HttpCache()
-{
-}
+
 
 #endif

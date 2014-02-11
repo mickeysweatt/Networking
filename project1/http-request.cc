@@ -9,7 +9,7 @@
 
 #include <string> // C++ STL string
 #include <string.h> // helpers to copy C-style strings
-
+#include <algorithm>
 #include "compat.h"
 
 using namespace std;
@@ -312,5 +312,7 @@ HttpRequest::SetVersion (const std::string &version)
 const std::string
 HttpRequest::GetRequestURL() const
 {
-    return m_host + "+" + m_path.substr(1);
+    std::string requestURL = m_host + m_path;
+    replace(requestURL.begin(), requestURL.end(), '/', '+');
+    return requestURL;
 }
