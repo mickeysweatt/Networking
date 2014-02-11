@@ -227,7 +227,7 @@ int HTTPServer::acceptConnection()
                     }
                     // if in local cache
                     /*
-                    if (cache.isCached(req.GetRequestURL()))
+                    if ()
                     {
                         std::string response_str;
                         cache.getFile(req.GetRequestURL(), &response_str);
@@ -238,8 +238,10 @@ int HTTPServer::acceptConnection()
                     //      if cached copy fresh
                     //          create HTTPResponeObject
                     //          return response
+                    
                     else
                     {
+                        cache.isCached(req.GetRequestURL());
                         req.FormatRequest(buff);
                         std::cout << "Full request: " << buff << std::endl;
                         
