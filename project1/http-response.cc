@@ -9,7 +9,7 @@
 
 #include <string> // C++ STL string
 #include <string.h> // helpers to copy C-style strings
-#include <stdio.h>
+#include <cstdio>
 #include "compat.h"
 
 using namespace std;
