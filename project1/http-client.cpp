@@ -28,59 +28,6 @@ HttpClient::HttpClient(std::string h, unsigned short p){
   sockfd = -1;
 }
 
-
-static int findContentLength(std::string response_header)
-{
-    int result;
-    size_t contentLengthPos;
-    std::string contentLength = "";
-    
-    //checks if the response is OK
-    if(response_header.find("200") == std::string::npos)
-    {
-        return -1;
-    }
-    
-    //finds the beginning of the Content Length field
-    if((contentLengthPos = response_header.find("Content-Length:")) == 
-                           std::string::npos)
-    {
-        return -1;
-    }
- 
-    //moves to the beginning of the number that is specified by field
-    contentLengthPos += 16;
-
-    //reads in the content length
-    while(response_header[contentLengthPos] != '\n')
-    {
-         if(isdigit(response_header[contentLengthPos]))
-         { 
-             //std::cout << "This is getting stored: " << 
-             //      response_header[contentLengthPos] << std::endl;
-             contentLength += response_header[contentLengthPos];
-         }
-         contentLengthPos++;
-    }
-
-
-    //convert the content length from string to actual integer
-    std::istringstream buffer(contentLength);
-    buffer >> result;
-    //std::cout << "This is result: " << result << std::endl;
-    return result;
-
-    //std::cout << "This is the content length:" << contentLength << std::endl;
-}
-
-
-
-
-
-
-
-
-
 HttpClient::~HttpClient() 
 {
     delete [] hostname;
