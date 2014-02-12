@@ -259,19 +259,20 @@ int HTTPServer::acceptConnection()
                         delete [] response_str;
                     }
                     // if conditional get (searching request headers)
-                    // std::string conditionalGetHeaderVal = 
-                                            // req.FindHeader("If-Modified-Since");
-                    // if ("" != conditionalGetHeaderVal)
-                    // {
-                        // // check if cached
-                        // std::string cache_response;
-                        // if(d_cache_p->isCached(reqURL))
-                        // {
-                            // d_cache_p->getFile( req.GetRequestURL(), 
-                                               // &cache_response);
-                           // // if stale, re-request
-                        // }
-                    // }
+                    std::string conditionalGetHeaderVal = 
+                                            req.FindHeader("If-Modified-Since");
+                    if ("" != conditionalGetHeaderVal)
+                    {
+                        // check if cached
+                        std::string cache_response;
+                        if(d_cache_p->isCached(reqURL))
+                        {
+                            d_cache_p->getFile(req.GetRequestURL(), 
+                                               &cache_response);
+                            response.ParseResponse(cache_response.c_str(), 
+                                                   cache_response.length());
+                        }
+                    }
                     
                         
                         
