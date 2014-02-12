@@ -1,4 +1,5 @@
 #include "http-client.h"
+#include "http-util.h"
 #include <iostream>
 #include <string.h>
 #include <errno.h>
@@ -27,23 +28,6 @@ HttpClient::HttpClient(std::string h, unsigned short p){
   sockfd = -1;
 }
 
-static int sendall(int sockfd, const char *buf, ssize_t *len)
-{
-    ssize_t total = 0;        // how many bytes we've sent
-    size_t bytesleft = *len; // how many we have left to send
-    ssize_t n;
-
-    while(total < *len) {
-        n = send(sockfd, buf+total, bytesleft, 0);
-        if (n == -1) { break; }
-        total += n;
-        bytesleft -= n;
-    }
-
-    *len = total; // return number actually sent here
-
-    return n==-1?-1:0; // return -1 on failure, 0 on success
-} 
 
 static int findContentLength(std::string response_header)
 {
@@ -180,11 +164,12 @@ int HttpClient::sendRequest(HttpRequest& request)
   //request
   char* sendbuf = new char[request.GetTotalLength()];
   request.FormatRequest(sendbuf);
-  //const char *sendbuf = "GET /index.html HTTP/1.1\r\nHost: www.google.com\r\n\r\n";
+  
   
   //send the request to server
   ssize_t len_req = static_cast<ssize_t>(strlen(sendbuf));
-  if ((numBytes = sendall(sockfd, sendbuf, &len_req)) == -1)
+  
+  if ((numBytes = mrm::HttpUtil::sendall(sockfd, sendbuf, &len_req)) == -1)
   {
     perror("send");
   }

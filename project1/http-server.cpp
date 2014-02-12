@@ -7,6 +7,7 @@
 #include "http-headers.h"
 #include "http-client.h"
 #include "http-cache.h"
+#include "http-util.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -36,23 +37,6 @@ static void *get_in_addr(struct sockaddr *sa)
     return &(reinterpret_cast<struct sockaddr_in6*>(sa)->sin6_addr);
 }
 
-static int sendall(int sockfd, const char *buf, ssize_t *len)
-{
-    ssize_t total = 0;        // how many bytes we've sent
-    size_t bytesleft = *len; // how many we have left to send
-    ssize_t n;
-
-    while(total < *len) {
-        n = send(sockfd, buf+total, bytesleft, 0);
-        if (n == -1) { break; }
-        total += n;
-        bytesleft -= n;
-    }
-    *len = total; // return number actually sent here
-
-    return n==-1?-1:0; // return -1 on failure, 0 on success
-} 
-
                         // ----------
                         // HTTPServer
                         // ----------
@@ -67,7 +51,6 @@ HTTPServer::HTTPServer() : d_sockfd(-1)
 {
     d_cache_p = new HttpCache();
 }
-
 
 HTTPServer::~HTTPServer()
 {   
@@ -233,14 +216,18 @@ int HTTPServer::acceptConnection()
                         ssize_t response_size   = response.GetTotalLength();
                         response_str = new char [response_size];
                         response.FormatResponse(response_str);
-                        if (sendall(new_fd,
-                                    response_str,
-                                    &response_size) == -1) 
+                        if (HttpUtil::sendall(new_fd,
+                                              response_str,
+                                             &response_size) == -1) 
                         {
                              perror("send");
                         }
                         delete [] response_str;
                     }
+                    // if conditional get (searching request headers)
+                        // check if cached
+                        // if stale, re-request
+                        // otherwise return 304
                     // if in local cache
                     else if (d_cache_p->isCached(reqURL))
                     {
@@ -295,7 +282,7 @@ int HTTPServer::acceptConnection()
                         d_cache_p->cacheFile(reqURL, r);
                     }
                     // return response
-                    if (sendall(new_fd,
+                    if (HttpUtil::sendall(new_fd,
                                 response_str,
                                 &response_size) == -1) 
                     {
@@ -309,7 +296,7 @@ int HTTPServer::acceptConnection()
                     err.append(e.what());
                     err.append("\n");
                     ssize_t msg_size = err.length();
-                    if (sendall(new_fd, err.c_str(), &msg_size) == -1) 
+                    if (HttpUtil::sendall(new_fd, err.c_str(), &msg_size) == -1) 
                     {
                         perror("send");
                     }
@@ -327,7 +314,7 @@ int HTTPServer::acceptConnection()
             {
                 strcpy(buff,"\nserver: Connection timed out\n");   
                 request_size = strlen(buff);
-                if (sendall(new_fd, buff,&request_size) == -1)
+                if (HttpUtil::sendall(new_fd, buff,&request_size) == -1)
                 {
                     perror("send");
                 }
