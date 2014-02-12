@@ -14,20 +14,20 @@
 
 #define BUFFER_SIZE 8096
 
-HttpClient::HttpClient(std::string h, unsigned short p){
-  //Formats the hostname that is passed in as a string into a char array
-  hostname = new char[h.length() + 1];
-  strcpy(hostname,h.c_str());
-  port = new char[5];
-  //Formats the port number that is passed in as an integer into a char array  
-  if (sprintf(port, "%d", p) == -1)
-  {
+HttpClient::HttpClient(std::string h, unsigned short p)
+{
+    //Formats the hostname that is passed in as a string into a char array
+    hostname = new char[h.length() + 1];
+    strcpy(hostname,h.c_str());
+    port = new char[5];
+    //Formats the port number that is passed in as an integer into a char array  
+    if (sprintf(port, "%d", p) == -1)
+    {
     perror("sprintf");
-  }
-  //CHECK IF THIS IS RIGHT!!!!
-  sockfd = -1;
+    }
+    
+    sockfd = -1;
 }
-
 
 static int findContentLength(std::string response_header)
 {
@@ -66,7 +66,7 @@ static int findContentLength(std::string response_header)
 
     //convert the content length from string to actual integer
     result = atoi(contentLength.c_str());
-    //std::cout << "This is result: " << result << std::endl;
+    
     return result;
 
 }
@@ -79,32 +79,29 @@ HttpClient::~HttpClient()
 
 int HttpClient::createConnection()
 {
-  //CHECK IF THIS IS RIGHT!!!
-  //if(sockfd > 0)
-  //  return 0;
+ 
+    int status;
 
-  int status;
+    //used to traverse the linkedlist returned from getaddrinfo function
+    struct addrinfo* p;
 
-  //used to traverse the linkedlist returned from getaddrinfo function
-  struct addrinfo* p;
-  
-  memset(&hints, 0, sizeof(hints));  // clears the hints structure
-  hints.ai_family = AF_INET;  //connection can be IPv4 or IPv6
-  hints.ai_socktype = SOCK_STREAM; // specify TCP connection
-  
-  //checks if there was succesful retrieval of server info
-  if((status = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) 
-  {
-    perror("getaddressinfo");
-    return status;
-  }
-  
-  /*
+    memset(&hints, 0, sizeof(hints));  // clears the hints structure
+    hints.ai_family = AF_INET;  //connection can be IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM; // specify TCP connection
+
+    //checks if there was succesful retrieval of server info
+    if((status = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) 
+    {
+        perror("getaddressinfo");
+        return status;
+    }
+
+    /*
     loops through the servinfo linked list to find a valid entry
     attempts to:
        1) create a socket
        2) connect sockets
-  */
+    */
     for(p = servinfo; p != NULL; p = p->ai_next)
     {
         //attempts to create socket
@@ -146,49 +143,42 @@ int HttpClient::createConnection()
 int HttpClient::sendRequest(HttpRequest& request)
 {
   //std::cout << "SENDREQUEST IS GETTING CALLED!!!!!" << std::endl;
-  //number of bytes actually sent
-  ssize_t numBytes;
-  //Receiving buffer
-  char recvbuf[BUFFER_SIZE];
-  std::string response_str;
-  //request
-  char* sendbuf = new char[request.GetTotalLength()];
-  request.FormatRequest(sendbuf);
+    //number of bytes actually sent
+    ssize_t numBytes;
+    //Receiving buffer
+    char recvbuf[BUFFER_SIZE];
+    std::string response_str;
+    //request
+    char* sendbuf = new char[request.GetTotalLength()];
+    request.FormatRequest(sendbuf);
   
   
-  //send the request to server
-  ssize_t len_req = static_cast<ssize_t>(strlen(sendbuf));
+    //send the request to server
+    ssize_t len_req = static_cast<ssize_t>(strlen(sendbuf));
   
-  if ((numBytes = mrm::HttpUtil::sendall(sockfd, sendbuf, &len_req)) == -1)
-  {
+    if ((numBytes = mrm::HttpUtil::sendall(sockfd, sendbuf, &len_req)) == -1)
+    {
     perror("send");
-  }
+    }
 
-  //std::cout << "GETS PASSED FIRST CHECKPOINT" << std::endl;
   
-  //check if send failed
-  if(numBytes == -1){
-    std::cout << "Send failed!!!" << std::endl;
-    close(sockfd);
-    return -1;
-  }
+  
+    //check if send failed
+    if(numBytes == -1){
+        std::cout << "Send failed!!!" << std::endl;
+        close(sockfd);
+        return -1;
+    }
  
-  //the position of the end of the header
-  size_t endHeaderPos = -1;
-  //total number of bytes received
-  ssize_t totalBytes = 0;
-  size_t contentLength = 0; 
+    //the position of the end of the header
+    size_t endHeaderPos = -1;
+    //total number of bytes received
+    ssize_t totalBytes = 0;
+    size_t contentLength = 0; 
 
   //client gets response from server
-  // NOTE TO MATT: We could change the HttPesponse to have a method "ParseHeaders (mostly implemented)
-  // We would need to add a method to "find A header"
-  // And then just use set body to parse the rest of it
-  // so in the bdoy when you find the end of the header, call ParseHeaders
-  // then search for the content length header
-  // then use that value to do your thing
-  // later, when you have the body, put it in with SetBody outside the loop
-  do 
-  {
+    do 
+    {
        //std::cout << "GETS PASSED SECOND CHECKPOINT!!!!!" << std::endl;
        if ((numBytes = recv(sockfd, recvbuf, BUFFER_SIZE, 0)) == -1)
        {
@@ -221,24 +211,21 @@ int HttpClient::sendRequest(HttpRequest& request)
             std::cout << "CLIENT: Receive failed" << std::endl;
         }
 
-        //std::cout << "Response_str: " << response_str << std::endl;
-        //std::cout << "numBytes: " << numBytes << std::endl;
-
         //checks if server is done sending the response
         if((totalBytes - (endHeaderPos+4)) == contentLength)
         {
             break;
         }
-  } 
-  while(numBytes > 0);
-  response = new HttpResponse();
-  // parses headers and returns pointer to beginning of body
-  response->ParseResponse(response_str.c_str(), response_str.length());
-  delete [] sendbuf;
-  return 0;
+    } 
+    while(numBytes > 0);
+    response = new HttpResponse();
+    // parses headers and returns pointer to beginning of body
+    response->ParseResponse(response_str.c_str(), response_str.length());
+    delete [] sendbuf;
+    return 0;
 }
 
 HttpResponse& HttpClient::getResponse()
 {
-  return *response;
+    return *response;
 }
