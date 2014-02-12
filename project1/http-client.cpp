@@ -1,16 +1,16 @@
 #include "http-client.h"
+#include "http-request.h"
+#include "http-response.h"
 #include "http-util.h"
 #include <iostream>
 #include <string.h>
 #include <errno.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <stdio.h>
-#include <sstream>
-#include "http-request.h"
-#include "http-response.h"
+#include <cstdio>
+
 
 #define BUFFER_SIZE 8096
 
@@ -65,21 +65,11 @@ static int findContentLength(std::string response_header)
 
 
     //convert the content length from string to actual integer
-    std::istringstream buffer(contentLength);
-    buffer >> result;
+    result = atoi(contentLength.c_str());
     //std::cout << "This is result: " << result << std::endl;
     return result;
 
-    //std::cout << "This is the content length:" << contentLength << std::endl;
 }
-
-
-
-
-
-
-
-
 
 HttpClient::~HttpClient() 
 {
