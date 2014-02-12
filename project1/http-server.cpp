@@ -37,6 +37,41 @@ static void *get_in_addr(struct sockaddr *sa)
     return &(reinterpret_cast<struct sockaddr_in6*>(sa)->sin6_addr);
 }
 
+static int requestFromServer(HttpRequest& req, 
+                       HttpClient *client, 
+                       HttpResponse *response,
+                       char *buff)
+{
+    req.FormatRequest(buff);
+    std::cout << "Full request: " << buff << std::endl;
+    int status = -1;
+    // create an HTTPClient Object
+    if (NULL == client)
+    {
+        client = new HttpClient(req.GetHost(), req.GetPort());
+        if ((status = client->createConnection()) != 0)
+        {
+            if (client)
+            {
+                delete client;
+                client = NULL;
+            }
+            return status;
+        }    
+    }
+    // pass in HTTPRequest, and have get the page
+    if ((status = client->sendRequest(req)) != 0)
+    {
+        if (client)
+        {
+            delete client;
+            client = NULL;
+        }
+        return status;
+    }
+    *response = client->getResponse();
+    return status;
+}
                         // ----------
                         // HTTPServer
                         // ----------
@@ -139,7 +174,6 @@ int HTTPServer::acceptConnection()
         perror("listen");
         exit(1);
     }
-    int status = -1;
     socklen_t sin_size;
     struct sockaddr_storage their_addr; // connector's address information
     int new_fd; // new connection on new_fd
@@ -225,8 +259,22 @@ int HTTPServer::acceptConnection()
                         delete [] response_str;
                     }
                     // if conditional get (searching request headers)
-                        // check if cached
-                        // if stale, re-request
+                    // std::string conditionalGetHeaderVal = 
+                                            // req.FindHeader("If-Modified-Since");
+                    // if ("" != conditionalGetHeaderVal)
+                    // {
+                        // // check if cached
+                        // std::string cache_response;
+                        // if(d_cache_p->isCached(reqURL))
+                        // {
+                            // d_cache_p->getFile( req.GetRequestURL(), 
+                                               // &cache_response);
+                           // // if stale, re-request
+                        // }
+                    // }
+                    
+                        
+                        
                         // otherwise return 304
                     // if in local cache
                     else if (d_cache_p->isCached(reqURL))
@@ -242,39 +290,13 @@ int HTTPServer::acceptConnection()
                     else
                     {                        
                         addToCache = true;
-                        req.FormatRequest(buff);
-                        std::cout << "Full request: " << buff << std::endl;
-                        
-                        // create an HTTPClient Object
-                        if (NULL == client)
-                        {
-                            client = new HttpClient(req.GetHost(), req.GetPort());
-                            if ((status = client->createConnection()) != 0)
-                            {
-                                if (client)
-                                {
-                                    delete client;
-                                    client = NULL;
-                                }
-                                exit(status);
-                            }    
-                        }
-                        // pass in HTTPRequest, and have get the page
-                        if ((status = client->sendRequest(req)) != 0)
-                        {
-                            if (client)
-                            {
-                                delete client;
-                                client = NULL;
-                            }
-                            exit(status);
-                        }
-                        response = client->getResponse();
+                        requestFromServer(req,client, &response, buff);
                     }
                     // create HTTPResponeObject
                     ssize_t response_size = response.GetTotalLength();
                     response_str = new char [response_size];
                     response.FormatResponse(response_str);
+                    // store to cache
                     if (addToCache)
                     {
                         response_str[response_size] = '\0';
@@ -331,5 +353,6 @@ int HTTPServer::acceptConnection()
     close(new_fd);
     return 0;
 }
+
 
 } // end of package namespace
