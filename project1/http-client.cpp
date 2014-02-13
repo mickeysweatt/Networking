@@ -135,9 +135,19 @@ int HttpClient::sendRequest(HttpRequest& request)
   //client gets response from server
     do 
     {
-       if ((numBytes = recv(sockfd, recvbuf, BUFFER_SIZE, 0)) == -1)
-       {
+       //std::cout << "GETS PASSED SECOND CHECKPOINT!!!!!" << std::endl;
+		if ((numBytes = recv(sockfd, recvbuf, BUFFER_SIZE, 0)) == -1)
+		{
+			//if there is already a response object created and theres an error
+			if(response == NULL)
+			{
+				response = new HttpResponse();
+			}
+			//set status code to 404 to signal error
+			response->SetStatusCode("404");
+			delete [] sendbuf;
             perror("recv");
+			return -1;
         }
         if (numBytes > 0 && errno != EAGAIN)
         {
@@ -153,12 +163,14 @@ int HttpClient::sendRequest(HttpRequest& request)
                 //use the findheader function to obtain the length
                 response = new HttpResponse();
                 response->ParseResponse(response_str.c_str(), endHeaderPos+4);
+				if(response->GetStatusCode() != "200")
+				{
+					delete [] sendbuf;
+					return 0;
+				}
                 contentLength = atoi(response->FindHeader("Content-Length").c_str());
                 headerFound = true;
             }
-            //if(response_str.find("\r\n\r") != std::string::npos){
-            //    endHeaderPos = response_str.find("\r\n\r");
-            //}
         }
         else if(numBytes == 0)
         {
