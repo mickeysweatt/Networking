@@ -24,43 +24,10 @@ HttpClient::HttpClient(std::string h, unsigned short p)
     if (sprintf(port, "%d", p) == -1)
     {
         perror("sprintf");
+
     }
     
     sockfd = -1;
-}
-
-static int findContentLength(std::string response_header)
-{
-    int result;
-    size_t contentLengthPos;
-    std::string contentLength = "";
-    
-    //finds the beginning of the Content Length field
-    if((contentLengthPos = response_header.find("Content-Length:")) == 
-                           std::string::npos)
-    {
-        return -1;
-    }
- 
-    //moves to the beginning of the number that is specified by field
-    contentLengthPos += 16;
-
-    //reads in the content length
-    while(response_header[contentLengthPos] != '\n')
-    {
-         if(isdigit(response_header[contentLengthPos]))
-         { 
-             contentLength += response_header[contentLengthPos];
-         }
-         contentLengthPos++;
-    }
-
-
-    //convert the content length from string to actual integer
-    result = atoi(contentLength.c_str());
-    
-    return result;
-
 }
 
 HttpClient::~HttpClient() 
@@ -163,7 +130,8 @@ int HttpClient::sendRequest(HttpRequest& request)
     //total number of bytes received
     ssize_t totalBytes = 0;
     size_t contentLength = 0; 
-
+	bool headerFound = false;
+	
   //client gets response from server
     do 
     {
@@ -178,11 +146,15 @@ int HttpClient::sendRequest(HttpRequest& request)
             response_str += buf;
             totalBytes += numBytes;
 
-            if((endHeaderPos = response_str.find("\r\n\r")) != std::string::npos)
+            if(!headerFound && ((endHeaderPos = response_str.find("\r\n\r")) != std::string::npos))
             {
-                //check if its a valid response
-                //if it is a valid response return the content length as an int
-                contentLength = findContentLength(response_str);
+                //create the HTTPResponse object
+                //call ParseResponse on the header
+                //use the findheader function to obtain the length
+                response = new HttpResponse();
+                response->ParseResponse(response_str.c_str(), endHeaderPos+4);
+                contentLength = atoi(response->FindHeader("Content-Length").c_str());
+                headerFound = true;
             }
             //if(response_str.find("\r\n\r") != std::string::npos){
             //    endHeaderPos = response_str.find("\r\n\r");
@@ -205,9 +177,15 @@ int HttpClient::sendRequest(HttpRequest& request)
         }
     } 
     while(numBytes > 0);
-    response = new HttpResponse();
-    // parses headers and returns pointer to beginning of body
-    response->ParseResponse(response_str.c_str(), response_str.length());
+	
+	//checks if response was intialized
+	if(response != NULL)
+	{
+	  response->SetBody(response_str.substr(endHeaderPos+4));
+	}
+	else
+	  return -1;
+	  
     delete [] sendbuf;
     return 0;
 }
