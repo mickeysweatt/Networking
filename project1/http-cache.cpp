@@ -11,8 +11,6 @@ const std::string CACHE_DIR = "cache/";
 
 HttpCache::HttpCache()
 {
-
-    //mkdir ("cache/", 0666);
     struct stat s;
     int err = stat("cache/", &s);
     if(-1 == err) 
@@ -60,8 +58,8 @@ int HttpCache::getFile(const std::string& url, std::string* contents) const
     contents_buff = static_cast<char *>(malloc(fileSize));
 
     //Read the file 
-    fread(contents_buff,fileSize,1,stream);
-    contents_buff[fileSize] = 0;
+    fread(contents_buff, fileSize, 1, stream);
+    contents_buff[fileSize] = '\0';
     *contents = std::string(contents_buff);  
     
     free(contents_buff);

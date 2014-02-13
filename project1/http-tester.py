@@ -9,11 +9,11 @@ import sys
 import time
 
 class bcolors:
+    PASS   = '\033[92m'
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
     WARNING = '\033[93m'
-    PASS = '\033[92m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
 
@@ -76,6 +76,7 @@ class ClientThread (Thread):
         self.data = ""
 
     def run(self):
+
         if self.file:
             dataFile = open(self.file, "r")
             cdata = dataFile.read()
@@ -84,6 +85,7 @@ class ClientThread (Thread):
             conn.request("GET", self.url)
             resp = conn.getresponse()
             rdata = resp.read()
+
             if rdata == cdata:
                 self.result = True
             self.data = rdata
@@ -121,8 +123,6 @@ class ClientPersistThread(Thread):
         conn.request("GET", self.url)
         resp = conn.getresponse()
         rdata = resp.read()
-        print "First respone returned"
-        print rdata
         if rdata != cdata:
             tmpFlag = False
             
@@ -134,8 +134,6 @@ class ClientPersistThread(Thread):
 
         resp = conn.getresponse()
         rdata2 = resp.read()
-        print "Second respone returned"
-        print rdata2
         if rdata2 != cdata2:
             tmpFlag = False
 
@@ -175,13 +173,11 @@ client1 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/ba
 client1.start()
 client1.join()
 if client1.result:
-    print "Basic object fetching: [" + bcolors.PASS +"PASSED" + bcolors.ENDC + "]" 
+    print "Basic object fetching: [" + bcolors.PASS + "PASSED" + bcolors.ENDC + "]" 
 else: 
     print "Basic object fetching: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]" 
 
-client2 = ClientPersistThread("127.0.0.1:" + pport, 
-                              "http://127.0.0.1:" + sport1 + "/basic", "./basic", 
-                              "http://127.0.0.1:" + sport1 + "/basic2", "./basic2")
+client2 = ClientPersistThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic", "http://127.0.0.1:" + sport1 + "/basic2", "./basic2")
 client2.start()
 client2.join()
 if client2.result:
@@ -204,11 +200,11 @@ r = False
 datafile = open("./basic3", "r")
 cdata = datafile.read()
 if(end - start) < 4 and client3.data == cdata and client4.data == cdata:
-   r = True
+    r = True
 if r:
-   print "Concurrent Connection: [" + bcolors.PASS + "PASSED" + bcolors.ENDC + "]"
+    print "Concurrent Connection: [" + bcolors.PASS + "PASSED" + bcolors.ENDC + "]"
 else:
-   print "Concurrent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
+    print "Concurrent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 
 client5 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
 client5.start()

@@ -162,6 +162,9 @@ HttpResponse::SetStatusCode(const std::string &code)
         case 200 :{
             SetStatusMsg("OK");
         } break;
+        case 304 : {
+            SetStatusMsg("Not Modified");
+        } break;
         case 404: {
             SetStatusMsg("Not Found");
         } break;
