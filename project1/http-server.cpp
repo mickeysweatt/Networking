@@ -1,6 +1,7 @@
 // HTTPServer.cpp                                                      -*-C++-*-
 // Beej's Guide to Network Programming used as a background template
 // http://beej.us/guide/bgnet/output/html/multipage/clientserver.html
+
 #include "http-server.h"
 #include "http-request.h"
 #include "http-response.h"
@@ -17,7 +18,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <errno.h>
-
+#include <ctime>
 #include <iostream>
 
 #define BACKLOG 20     // how many pending connections queue will hold
@@ -26,6 +27,12 @@
 //==============================================================================
 //                    LOCAL FUNCTION DEFINITIONS
 //==============================================================================
+
+// check if look-up fail 404
+// clean
+// select instead of loop
+// valgrind
+// good readme
 
 // get sockaddr, IPv4 or IPv6:
 static void *get_in_addr(struct sockaddr *sa)
@@ -43,7 +50,9 @@ static int requestFromServer(HttpRequest& req,
                        char *buff)
 {
     req.FormatRequest(buff);
-    std::cout << "Full request: " << buff << std::endl;
+    std::cout << "\t\tFull request" << std::endl
+              << "\t\t============" << std::endl
+              << buff               << std::endl;
     int status = -1;
     // create an HTTPClient Object
     if (NULL == client)
@@ -72,11 +81,31 @@ static int requestFromServer(HttpRequest& req,
     *response = client->getResponse();
     return status;
 }
-                        // ----------
-                        // HTTPServer
-                        // ----------
+
+static bool isFresh(HttpResponse& response)
+{
+    std::string expireHeader            = response.FindHeader("Expires");
+    std::string html_date_format_string = "%a, %d %h %G %X %Z";
+    // never expires
+    if ("" == expireHeader)
+    {
+        return true;
+    }
+    
+    struct tm expire_time;
+
+    memset(&expire_time, 0, sizeof(expire_time));
+           
+    strptime(expireHeader.c_str(),
+             html_date_format_string.c_str(), 
+            &expire_time);
+    return (difftime(time(0), mktime(&expire_time)) < 0);
+}             
+                            // ----------
+                            // HTTPServer
+                            // ----------
 // =============================================================================
-//                          INLINE FUNCTION DEFINITIONS
+//                          MEMBER FUNCTION DEFINTIONS
 // =============================================================================
 
 namespace mrm {
@@ -92,7 +121,6 @@ HTTPServer::~HTTPServer()
     delete d_cache_p;
 }
 
-                        
 // MANIPULATORS
 int HTTPServer::startServer(int port)
 {
@@ -153,7 +181,7 @@ int HTTPServer::startServer(int port)
     
     struct timeval tv;
 
-    tv.tv_sec = 10;
+    tv.tv_sec  = 10;
     tv.tv_usec = 500000;
 
     setsockopt(sockfd, 
@@ -168,7 +196,7 @@ int HTTPServer::startServer(int port)
 
 int HTTPServer::acceptConnection()
 {
-    printf("server: waiting for connections...\n");
+    //printf("server: waiting for connections...\n");
     if (listen(d_sockfd, BACKLOG) == -1) 
     {
         perror("listen");
@@ -176,7 +204,7 @@ int HTTPServer::acceptConnection()
     }
     socklen_t sin_size;
     struct sockaddr_storage their_addr; // connector's address information
-    int new_fd; // new connection on new_fd
+    int new_fd;                         // new connection on new_fd
     char s[INET6_ADDRSTRLEN];
     ssize_t request_size;
     char buff[BUFFER_SIZE];
@@ -184,6 +212,8 @@ int HTTPServer::acceptConnection()
      
     sin_size = sizeof(their_addr);
     size_t fail_ctr = 0;
+    // This loop is in place to resolve issue of attempting to open socket
+    // before the OS has finished closing.
     do
     {
         new_fd = accept(d_sockfd, 
@@ -199,7 +229,7 @@ int HTTPServer::acceptConnection()
     }
     
     struct timeval tv;
-
+    // send timeout
     tv.tv_sec  = 10;
     tv.tv_usec = 500000;
     setsockopt(new_fd, 
@@ -212,7 +242,7 @@ int HTTPServer::acceptConnection()
               get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
               s, 
               sizeof(s));
-    printf("server: got connection from %s\n", s);
+    //printf("server: got connection from %s\n", s);
 
     if (!fork()) { // this is the child process
         close(d_sockfd); // child doesn't need the listener
@@ -237,7 +267,7 @@ int HTTPServer::acceptConnection()
                 exit(1);
             }
             
-            if (request_size > 0)// && errno != EAGAIN)
+            if (request_size > 0 && errno != EAGAIN)
             {
                 try 
                 {
@@ -258,35 +288,30 @@ int HTTPServer::acceptConnection()
                         }
                         delete [] response_str;
                     }
-                    // if conditional get (searching request headers)
-                    std::string conditionalGetHeaderVal = 
-                                            req.FindHeader("If-Modified-Since");
-                    if ("" != conditionalGetHeaderVal)
-                    {
-                        // check if cached
-                        std::string cache_response;
-                        if(d_cache_p->isCached(reqURL))
-                        {
-                            d_cache_p->getFile(req.GetRequestURL(), 
-                                               &cache_response);
-                            response.ParseResponse(cache_response.c_str(), 
-                                                   cache_response.length());
-                        }
-                    }
                     
-                        
-                        
-                        // otherwise return 304
+                    // otherwise return 304
                     // if in local cache
                     else if (d_cache_p->isCached(reqURL))
                     {
-                        addToCache = false;
+                        // set up conditional GET request
                         std::string cache_response;
                         d_cache_p->getFile(req.GetRequestURL(), &cache_response);
                         response.ParseResponse(cache_response.c_str(), 
                                                cache_response.length());
+                        if (isFresh(response))
+                        {
+                            std::string lastModifiedDate = 
+                                           response.FindHeader("Last-Modified");
+                            req.AddHeader(std::string("If-Modified-Since"), 
+                                          lastModifiedDate);
+                       }
+                       else
+                       {
+                        std::cout << "STALL" << std::endl;
+                       }
+                       requestFromServer(req, client, &response, buff);
+                       addToCache = false;
                     }
-                    
                     // otherwise get to from origin server
                     else
                     {                        
@@ -295,12 +320,16 @@ int HTTPServer::acceptConnection()
                     }
                     // create HTTPResponeObject
                     ssize_t response_size = response.GetTotalLength();
-                    response_str = new char [response_size];
+                    response_str = new char[response_size];
                     response.FormatResponse(response_str);
+                    response_str[response_size] = '\0';
+                    std::cout << "\t\tResponse" << std::endl
+                              << "\t\t--------" << std::endl
+                              << response_str       << std::endl;
+                    
                     // store to cache
                     if (addToCache)
                     {
-                        response_str[response_size] = '\0';
                         std::string r(response_str);
                         d_cache_p->cacheFile(reqURL, r);
                     }
@@ -313,6 +342,7 @@ int HTTPServer::acceptConnection()
                     }
                     delete [] response_str;
                 }
+                
                 catch (ParseException e)
                 {
                     std::string err = "Error: ";
@@ -323,7 +353,7 @@ int HTTPServer::acceptConnection()
                     {
                         perror("send");
                     }
-                    printf("server: closed connection from %s\n", s);
+                    //printf("server: closed connection from %s\n", s);
                     close(new_fd);
                     if (client)
                     {

@@ -75,5 +75,5 @@ int HttpCache::cacheFile(const std::string& url, std::string& contents) const
     {
         return -1;
     }
-    return (write(fd, contents.c_str(), contents.length()) < 0);
+    return write(fd, contents.c_str(), contents.length()) < 0 & close(fd);
 }

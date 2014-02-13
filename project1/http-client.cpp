@@ -23,7 +23,7 @@ HttpClient::HttpClient(std::string h, unsigned short p)
     //Formats the port number that is passed in as an integer into a char array  
     if (sprintf(port, "%d", p) == -1)
     {
-    perror("sprintf");
+        perror("sprintf");
     }
     
     sockfd = -1;
@@ -34,12 +34,6 @@ static int findContentLength(std::string response_header)
     int result;
     size_t contentLengthPos;
     std::string contentLength = "";
-    
-    //checks if the response is OK
-    if(response_header.find("200") == std::string::npos)
-    {
-        return -1;
-    }
     
     //finds the beginning of the Content Length field
     if((contentLengthPos = response_header.find("Content-Length:")) == 
@@ -56,8 +50,6 @@ static int findContentLength(std::string response_header)
     {
          if(isdigit(response_header[contentLengthPos]))
          { 
-             //std::cout << "This is getting stored: " << 
-             //      response_header[contentLengthPos] << std::endl;
              contentLength += response_header[contentLengthPos];
          }
          contentLengthPos++;
@@ -120,8 +112,7 @@ int HttpClient::createConnection()
         }
         break;
     }
-
-/*    
+  
     struct timeval tv = {10, 0};
 
     setsockopt(sockfd, 
@@ -129,7 +120,6 @@ int HttpClient::createConnection()
                SO_RCVTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
-*/  
     //None of the entries were valid
   if(p == NULL){
     std::cout << "Failed to connect" << std::endl;
@@ -158,10 +148,8 @@ int HttpClient::sendRequest(HttpRequest& request)
   
     if ((numBytes = mrm::HttpUtil::sendall(sockfd, sendbuf, &len_req)) == -1)
     {
-    perror("send");
-    }
-
-  
+        perror("send");
+    }  
   
     //check if send failed
     if(numBytes == -1){
@@ -179,7 +167,6 @@ int HttpClient::sendRequest(HttpRequest& request)
   //client gets response from server
     do 
     {
-       //std::cout << "GETS PASSED SECOND CHECKPOINT!!!!!" << std::endl;
        if ((numBytes = recv(sockfd, recvbuf, BUFFER_SIZE, 0)) == -1)
        {
             perror("recv");
