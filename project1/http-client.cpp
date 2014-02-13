@@ -188,9 +188,6 @@ int HttpClient::sendRequest(HttpRequest& request)
                 response->ParseResponse(response_str.c_str(), endHeaderPos+4);
                 contentLength = atoi(response->FindHeader("Content-Length").c_str());
                 headerFound = true;
-                //check if its a valid response
-                //if it is a valid response return the content length as an int
-                //contentLength = findContentLength(response_str);
             }
         }
         else if(numBytes == 0)
