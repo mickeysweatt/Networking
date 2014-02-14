@@ -44,15 +44,12 @@ static void *get_in_addr(struct sockaddr *sa)
     return &(reinterpret_cast<struct sockaddr_in6*>(sa)->sin6_addr);
 }
 
-static int requestFromServer(HttpRequest& req, 
-                       HttpClient *client, 
-                       HttpResponse *response,
-                       char *buff)
+static int requestFromServer(HttpRequest&   req, 
+                             HttpClient   **client_ptr, 
+                             HttpResponse  *response
+                            )
 {
-    req.FormatRequest(buff);
-    std::cout << "\t\tFull request" << std::endl
-              << "\t\t============" << std::endl
-              << buff               << std::endl;
+    HttpClient *client = *client_ptr;
     int status = -1;
     // create an HTTPClient Object
     if (NULL == client)
@@ -79,6 +76,7 @@ static int requestFromServer(HttpRequest& req,
         return status;
     }
     *response = client->getResponse();
+    *client_ptr = client;
     return status;
 }
 
@@ -99,7 +97,8 @@ static bool isFresh(HttpResponse& response)
     strptime(expireHeader.c_str(),
              html_date_format_string.c_str(), 
             &expire_time);
-    return (difftime(time(0), mktime(&expire_time)) < 0);
+    
+    return (difftime(time(0), mktime(&expire_time)) > 0);
 }             
                             // ----------
                             // HTTPServer
@@ -230,7 +229,7 @@ int HTTPServer::acceptConnection()
     
     struct timeval tv;
     // send timeout
-    tv.tv_sec  = 10;
+    tv.tv_sec  = 120;
     tv.tv_usec = 500000;
     setsockopt(new_fd, 
                SOL_SOCKET, 
@@ -279,7 +278,7 @@ int HTTPServer::acceptConnection()
                         response.SetStatusCode("501");
                         ssize_t response_size   = response.GetTotalLength();
                         response_str = new char [response_size];
-                        response.FormatResponse(response_str);
+                        response.FormatResponse(response_str);  
                         if (HttpUtil::sendall(new_fd,
                                               response_str,
                                              &response_size) == -1) 
@@ -298,34 +297,57 @@ int HTTPServer::acceptConnection()
                         d_cache_p->getFile(req.GetRequestURL(), &cache_response);
                         response.ParseResponse(cache_response.c_str(), 
                                                cache_response.length());
-                        if (isFresh(response))
-                        {
+                         
+                        
+                            // std::string headRequestStr 
+                                                 // = "HEAD "  + req.GetRequestURL()
+                                                 // + " HTTP/" + req.GetVersion() +
+                                                 // "\r\n\r\n";
+
+                            // HttpRequest headRequest;
+                            // headRequest.ParseRequest(headRequestStr.c_str(),
+                                                     // headRequestStr.length());
+                            // headRequest.SetPort(req.GetPort());
+                            // char buf[1024];
+                            // headRequest.FormatRequest(buf);
+                            // printf("\nRequest:\n--------- \n%s\n",buf);
+
+                            // HttpResponse headResponse;
+                            // requestFromServer(headRequest, 
+                                              // &client, 
+                                              // &headResponse);
+                      
+                       if (!isFresh(response))
+                       {
                             std::string lastModifiedDate = 
                                            response.FindHeader("Last-Modified");
                             req.AddHeader(std::string("If-Modified-Since"), 
                                           lastModifiedDate);
+                            requestFromServer(req, 
+                                              &client, 
+                                              &response);
+                            addToCache = true;
+                            requestFromServer(req, &client, &response);
                        }
-                       else
-                       {
-                        std::cout << "STALL" << std::endl;
-                       }
-                       requestFromServer(req, client, &response, buff);
-                       addToCache = false;
+                       
+                       
                     }
                     // otherwise get to from origin server
                     else
                     {                        
+                        std::cout << "STALL" << std::endl;
                         addToCache = true;
-                        requestFromServer(req,client, &response, buff);
+                        requestFromServer(req,&client, &response);
                     }
                     // create HTTPResponeObject
+                   
                     ssize_t response_size = response.GetTotalLength();
                     response_str = new char[response_size];
                     response.FormatResponse(response_str);
                     response_str[response_size] = '\0';
-                    std::cout << "\t\tResponse" << std::endl
-                              << "\t\t--------" << std::endl
-                              << response_str       << std::endl;
+                    // std::cout << "\t\tResponse" << std::endl
+                              // << "\t\t--------" << std::endl
+                              // << response_str       << std::endl;
                     
                     // store to cache
                     if (addToCache)

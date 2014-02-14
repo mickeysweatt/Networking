@@ -24,7 +24,6 @@ HttpClient::HttpClient(std::string h, unsigned short p)
     if (sprintf(port, "%d", p) == -1)
     {
         perror("sprintf");
-
     }
     
     sockfd = -1;
@@ -38,7 +37,6 @@ HttpClient::~HttpClient()
 
 int HttpClient::createConnection()
 {
- 
     int status;
 
     //used to traverse the linkedlist returned from getaddrinfo function
@@ -80,7 +78,7 @@ int HttpClient::createConnection()
         break;
     }
   
-    struct timeval tv = {10, 0};
+    struct timeval tv = {125, 0};
 
     setsockopt(sockfd, 
                SOL_SOCKET, 
@@ -108,7 +106,10 @@ int HttpClient::sendRequest(HttpRequest& request)
     //request
     char* sendbuf = new char[request.GetTotalLength()];
     request.FormatRequest(sendbuf);
-  
+    sendbuf[request.GetTotalLength()] = '\0';
+    std::cout << "\t\tFull request: " << std::endl
+              << "\t\t==============" << std::endl
+              << sendbuf          << std::endl;
   
     //send the request to server
     ssize_t len_req = static_cast<ssize_t>(strlen(sendbuf));
@@ -133,9 +134,10 @@ int HttpClient::sendRequest(HttpRequest& request)
 	bool headerFound = false;
 	
   //client gets response from server
+   
     do 
     {
-       //std::cout << "GETS PASSED SECOND CHECKPOINT!!!!!" << std::endl;
+       
 		if ((numBytes = recv(sockfd, recvbuf, BUFFER_SIZE, 0)) == -1)
 		{
 			//if there is already a response object created and theres an error
@@ -163,9 +165,13 @@ int HttpClient::sendRequest(HttpRequest& request)
                 //use the findheader function to obtain the length
                 response = new HttpResponse();
                 response->ParseResponse(response_str.c_str(), endHeaderPos+4);
+                
 				if(response->GetStatusCode() != "200")
 				{
-					delete [] sendbuf;
+                        std::cout << "\t\tResponse: " << std::endl
+                                  << "\t\t--------"   << std::endl
+                                  << response_str     << std::endl;
+                    delete [] sendbuf;
 					return 0;
 				}
                 contentLength = atoi(response->FindHeader("Content-Length").c_str());
@@ -199,6 +205,9 @@ int HttpClient::sendRequest(HttpRequest& request)
 	  return -1;
 	  
     delete [] sendbuf;
+    std::cout << "\t\tResponse: " << std::endl
+              << "\t\t--------"   << std::endl
+              << response_str     << std::endl;
     return 0;
 }
 

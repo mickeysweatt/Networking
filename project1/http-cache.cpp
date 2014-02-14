@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <algorithm>
 
 const std::string CACHE_DIR = "cache/";
 
@@ -25,8 +26,10 @@ HttpCache::HttpCache()
 
 bool HttpCache::isCached(const std::string& url) const
 {
+    std::string requestURL = url;
+    replace(requestURL.begin(), requestURL.end(), '/', '+');
     int fd;
-    std::string file_name = CACHE_DIR + url;
+    std::string file_name = CACHE_DIR + requestURL;
     fd = open(file_name.c_str(), O_RDONLY);
     FILE *file = fdopen(fd, "r");
     if (NULL == file)
@@ -41,12 +44,14 @@ bool HttpCache::isCached(const std::string& url) const
 
 int HttpCache::getFile(const std::string& url, std::string* contents) const
 {
+    std::string requestURL = url;
+    replace(requestURL.begin(), requestURL.end(), '/', '+');
     FILE *stream;
     char *contents_buff;
     size_t fileSize = 0;
 
     //Open the stream. Note "b" to avoid DOS/UNIX new line conversion.
-    std::string file_name = CACHE_DIR + url;
+    std::string file_name = CACHE_DIR + requestURL;
     stream = fopen(file_name.c_str(), "rb");
 
     //Steak to the end of the file to determine the file size
@@ -69,11 +74,15 @@ int HttpCache::getFile(const std::string& url, std::string* contents) const
 
 int HttpCache::cacheFile(const std::string& url, std::string& contents) const
 {
-    std::string file_name = CACHE_DIR + url;
+    std::string requestURL = url;
+    replace(requestURL.begin(), requestURL.end(), '/', '+');
+    
+    std::string file_name = CACHE_DIR + requestURL;
     int fd = open(file_name.c_str(), O_CREAT | O_RDWR, 0666);
     if (fd < 0)
     {
         return -1;
     }
-    return write(fd, contents.c_str(), contents.length()) < 0 & close(fd);
+    return ((write(fd, contents.c_str(), contents.length()) < 0) & close(fd));
 }
+

@@ -134,7 +134,10 @@ HttpHeaders::FormatHeaders (char *buffer) const
 void
 HttpHeaders::AddHeader (const std::string &key, const std::string &value)
 {
-    m_headers.push_back (HttpHeader (key, value));
+    if (FindHeader(key) == "")
+    {
+        m_headers.push_back (HttpHeader (key, value));
+    }
 }
 
 void
