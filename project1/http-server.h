@@ -21,9 +21,8 @@ class HTTPServer {
     
     // DATA
     private:
-        int d_sockfd;           // the file descriptor for the listening socket
-        
-        HttpCache *d_cache_p;  //  a pointer to the instance of the HttpCache
+        int d_sockfd;           // the file descriptor for the listening socket       
+    
     public:
         // CREATORS
         explicit HTTPServer();
@@ -56,6 +55,17 @@ class HTTPServer {
 // =============================================================================
 
 namespace mrm {
+
+// CREATORS
+inline HTTPServer::HTTPServer() : d_sockfd(-1)
+{
+    /* intentionally left blank */
+}
+
+inline HTTPServer::~HTTPServer()
+{   
+    /* intentionally left blank */
+}
 
 // ACCESSORS
 inline 

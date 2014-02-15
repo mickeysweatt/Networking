@@ -92,7 +92,62 @@ static bool isFresh(HttpResponse& response)
             &expire_time);
     
     return (difftime(time(0), mktime(&expire_time)) > 0);
-}             
+}
+
+static int initializeClientConnection(int sockfd)
+{
+    socklen_t sin_size;                       // the size of the socket 
+                                              // IN Address
+                                              
+    struct sockaddr_storage their_addr;       // connector's address information
+    
+    int new_fd;                               // new connection on new_fd
+    
+    char s[INET6_ADDRSTRLEN];                 // an array to hold the address of
+                                              // of the requesting client
+                                                        
+    sin_size = sizeof(their_addr);
+    
+    size_t fail_ctr = 0;                     // a counter to break-out of accept
+                                             // loop if fails
+    
+    // This loop is in place to resolve issue of attempting to open socket
+    // before the OS has finished closing.
+    do
+    {
+        new_fd = accept(sockfd, 
+                        reinterpret_cast<struct sockaddr *>(&their_addr), 
+                        &sin_size);
+    }
+    while (fail_ctr++ < 3 && -1 == new_fd);
+    
+    // if after the loop completion we still have error state
+    if (-1 == new_fd) 
+    {
+        perror("accept");
+        return -1;
+    }
+    
+    inet_ntop(their_addr.ss_family,
+              get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
+              s, 
+              sizeof(s));
+    printf("server: got connection from %s\n", s);
+    
+    struct timeval tv = {12, 500000};
+    // send timeout for sending a receiving from the client
+    setsockopt(new_fd, 
+               SOL_SOCKET, 
+               SO_RCVTIMEO, 
+               reinterpret_cast<char *>(&tv),
+               sizeof(struct timeval));
+    setsockopt(new_fd, 
+               SOL_SOCKET, 
+               SO_SNDTIMEO, 
+               reinterpret_cast<char *>(&tv),
+               sizeof(struct timeval));
+    return new_fd;
+}                     
                             // ----------
                             // HTTPServer
                             // ----------
@@ -101,17 +156,6 @@ static bool isFresh(HttpResponse& response)
 // =============================================================================
 
 namespace mrm {
-
-// CREATORS
-HTTPServer::HTTPServer() : d_sockfd(-1)
-{
-    d_cache_p = new HttpCache();
-}
-
-HTTPServer::~HTTPServer()
-{   
-    delete d_cache_p;
-}
 
 // MANIPULATORS
 int HTTPServer::startServer(int port)
@@ -188,56 +232,28 @@ int HTTPServer::startServer(int port)
 
 int HTTPServer::acceptConnection()
 {
+    ssize_t request_size;        // the number of bytes of the
+                                // client's request
+                                              
+    char buff[BUFFER_SIZE];     // the buffer to hold the request
+    
+    int new_fd;                             
+    
+    memset(buff,0, BUFFER_SIZE);    
+    
     printf("server: waiting for connections...\n");
+    
     if (listen(d_sockfd, BACKLOG) == -1) 
     {
         perror("listen");
         exit(1);
     }
-
-    socklen_t sin_size;
-    struct sockaddr_storage their_addr; // connector's address information
-    int new_fd;                         // new connection on new_fd
-    char s[INET6_ADDRSTRLEN];
-    ssize_t request_size;
-    char buff[BUFFER_SIZE];
-    memset(buff,0, BUFFER_SIZE);
-     
-    sin_size = sizeof(their_addr);
-    size_t fail_ctr = 0;
-    // This loop is in place to resolve issue of attempting to open socket
-    // before the OS has finished closing.
-    do
-    {
-        new_fd = accept(d_sockfd, 
-                        reinterpret_cast<struct sockaddr *>(&their_addr), 
-                        &sin_size);
-    }
-    while (fail_ctr++ < 5 && -1 == new_fd);
     
-    if (-1 == new_fd) 
+    new_fd = initializeClientConnection(d_sockfd);
+    if (-1 == new_fd)
     {
-        perror("accept");
         return -1;
     }
-    
-    
-    struct timeval tv;
-    // send timeout
-    tv.tv_sec  = 120;
-    tv.tv_usec = 500000;
-    setsockopt(new_fd, 
-               SOL_SOCKET, 
-               SO_RCVTIMEO, 
-               reinterpret_cast<char *>(&tv),
-               sizeof(struct timeval));
-    
-    inet_ntop(their_addr.ss_family,
-              get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
-              s, 
-              sizeof(s));
-    printf("server: got connection from %s\n", s);
-
     if (!fork()) 
     { // this is the child process
         close(d_sockfd); // child doesn't need the listener
@@ -295,25 +311,7 @@ int HTTPServer::acceptConnection()
                         response.ParseResponse(cache_response.c_str(), 
                                                cache_response.length());
                          
-                        /*
-                            // std::string headRequestStr 
-                                                 // = "HEAD "  + req.GetRequestURL()
-                                                 // + " HTTP/" + req.GetVersion() +
-                                                 // "\r\n\r\n";
 
-                            // HttpRequest headRequest;
-                            // headRequest.ParseRequest(headRequestStr.c_str(),
-                                                     // headRequestStr.length());
-                            // headRequest.SetPort(req.GetPort());
-                            // char buf[1024];
-                            // headRequest.FormatRequest(buf);
-                            // printf("\nRequest:\n--------- \n%s\n",buf);
-
-                            // HttpResponse headResponse;
-                            // requestFromServer(headRequest, 
-                                              // &client, 
-                                              // &headResponse);
-                            */
                        // Stale copy in cache 
                        if (!isFresh(response))
                        {
@@ -373,7 +371,6 @@ int HTTPServer::acceptConnection()
                     {
                         perror("send");
                     }
-                    printf("server: closed connection from %s\n", s);
                     close(new_fd);
                     if (client)
                     {
