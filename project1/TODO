@@ -1,16 +1,18 @@
-Must do
--------
-o Parser the raw request and response using provided frameworks
+================================================================================
+                                TESTING
+================================================================================
+BOTH:
+o Timeouts (send/recv)
+o Check return values of all sys_functions and do appropriate things
+o Check errno for important information on failures, and potentially change our
+  reaction depending
+o Valgrind (memory leaks, over-reads, etc)
 
-o HTTP Client: take a HTTPRequest Object, connect to the destination server, get
-             the page, cache it, return to requester.
-             
-o Handle the caching
----------------------------------------------------------------------------------
-Optional (if we have time and want to do something cool)
-o Performance (Different concurrent models)
-	o threads with a shared cache in main mem, which will be stored cached on disk)
-	o Process pool 
-		o which each store a copy of the cache
-		o condition variable for when they have a job
-		o stored with a map of process to a list of servers that they have open TCP connections to (pipelining and all)
+Server concerns:
+o Confirm correct handling of 304
+o Confirm correct handling of 404
+o Confirm correct handling of others
+
+Client concerns:
+o Confirm correct handling of 404
+o Confirm correct handling of others

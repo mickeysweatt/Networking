@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctime>
-#include <iostream>
 
 #define BACKLOG 20      // how many pending connections queue will hold
 #define MAX_CLIENTS 100 // how many outgoing connections we can have
@@ -49,6 +48,7 @@ static int requestFromServer(HttpRequest&   req,
 {
     HttpClient *client = *client_ptr;
     int status = -1;
+    
     // create an HTTPClient Object
     if (NULL == client)
     {
@@ -63,6 +63,7 @@ static int requestFromServer(HttpRequest&   req,
             return status;
         }    
     }
+    
     // pass in HTTPRequest, and have get the page
     if ((status = client->sendRequest(req)) != 0)
     {
@@ -173,11 +174,13 @@ static int initializeClientConnection(int sockfd)
                SO_RCVTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
+    
     setsockopt(new_fd, 
                SOL_SOCKET, 
                SO_SNDTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
+    
     return new_fd;
 }                     
                             // ----------
@@ -359,9 +362,6 @@ int HTTPServer::acceptConnection()
                                            response.FindHeader("Last-Modified");
                             req.AddHeader(std::string("If-Modified-Since"), 
                                           lastModifiedDate);
-                            requestFromServer(req, 
-                                              &client, 
-                                              &response);
                             addToCache = true;
                             
                             requestFromServer(req, 
@@ -369,12 +369,20 @@ int HTTPServer::acceptConnection()
                                              &conditionalGetResponse);
                             
                             // we get a new page set  the response to this page
-                            if ("200" == response.GetStatusCode())
+                            if ("200" == conditionalGetResponse.GetStatusCode())
                             {
                                 if (veryVerbose) printf("Refreshing cache\n");
                                 response = conditionalGetResponse;
                                 // refresh the cache
                                 addToCache = true;
+                            }
+                            
+                            // if not unexpectec resutl
+                            else if ("304" != conditionalGetResponse.GetStatusCode())
+                            {
+                                printf("\t\tUNEXPECTED STATUS CODE %d\n", 
+                                       conditionalGetResponse.GetStatusCode());
+                                response = conditionalGetResponse;
                             }
                             // otherwise the response is still the cached copy
                         }
@@ -408,6 +416,7 @@ int HTTPServer::acceptConnection()
                         std::string r(response_str);
                         cache.cacheFile(reqURL, r);
                     }
+                    printf("\t\tResponse to server:\n%s\n" , response_str);
                     // return response
                     if (HttpUtil::sendall(new_fd,
                                     response_str,

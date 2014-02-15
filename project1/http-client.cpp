@@ -167,7 +167,7 @@ int HttpClient::sendRequest(HttpRequest& request)
 				{
                         if (veryVerbose) 
                         {
-                            printf("\t\tResponse:--------\n                                    %s\n\n", response_str.c_str());
+                            printf("\t\tResponse:\n\t\t--------\n%s\n", response_str.c_str());
                        }
                     delete [] sendbuf;
 					return 0;
@@ -204,7 +204,7 @@ int HttpClient::sendRequest(HttpRequest& request)
 	  return -1;
 	}  
     delete [] sendbuf;
-    if (veryVerbose) printf("\t\tResponse: \n\t\t--------\n%s\n", response_str.c_str());
+    if (veryVerbose) printf("\t\tResponse:\n\t\t--------\n%s\n", response_str.c_str());
     return 0;
 }
 
