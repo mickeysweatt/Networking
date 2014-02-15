@@ -314,6 +314,7 @@ int HTTPServer::acceptConnection()
                                               // &client, 
                                               // &headResponse);
                             */
+                       // Stale copy in cache 
                        if (!isFresh(response))
                        {
                             std::string lastModifiedDate = 
@@ -325,6 +326,14 @@ int HTTPServer::acceptConnection()
                                               &response);
                             addToCache = true;
                             requestFromServer(req, &client, &response);
+                                           // otherwise get to from origin server
+                        }
+                        // Fresh copy in cache
+                        else
+                        {                       
+                            std::cout << "Fresh! Returning cached copy" << std::endl;
+                            addToCache = false;
+                        }                       
                     }
                     // otherwise get to from origin server
                     else
@@ -354,7 +363,6 @@ int HTTPServer::acceptConnection()
                     }
                     delete [] response_str;
                 }
-            }
                 catch (ParseException e)
                 {
                     std::string err = "Error: ";
