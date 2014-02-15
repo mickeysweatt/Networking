@@ -7,6 +7,7 @@
 #include "http-headers.h"
 #include "http-client.h"
 #include "http-cache.h"
+#include "http-util.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -16,7 +17,7 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <errno.h>
-
+#include <ctime>
 #include <iostream>
 
 #define BACKLOG 20     // how many pending connections queue will hold
@@ -36,27 +37,81 @@ static void *get_in_addr(struct sockaddr *sa)
     return &(reinterpret_cast<struct sockaddr_in6*>(sa)->sin6_addr);
 }
 
-static int sendall(int sockfd, const char *buf, ssize_t *len)
+static int requestFromServer(HttpRequest&   req, 
+                             HttpClient   **client_ptr, 
+                             HttpResponse  *response
+                            )
 {
-    ssize_t total = 0;        // how many bytes we've sent
-    size_t bytesleft = *len; // how many we have left to send
-    ssize_t n;
-
-    while(total < *len) {
-        n = send(sockfd, buf+total, bytesleft, 0);
-        if (n == -1) { break; }
-        total += n;
-        bytesleft -= n;
+    HttpClient *client = *client_ptr;
+    int status = -1;
+    // create an HTTPClient Object
+    if (NULL == client)
+    {
+        client = new HttpClient(req.GetHost(), req.GetPort());
+        if ((status = client->createConnection()) != 0)
+        {
+            if (client)
+            {
+                delete client;
+                client = NULL;
+            }
+            return status;
+        }    
     }
-    *len = total; // return number actually sent here
+    // pass in HTTPRequest, and have get the page
+    if ((status = client->sendRequest(req)) != 0)
+    {
+        if (client)
+        {
+            delete client;
+            client = NULL;
+        }
+        return status;
+    }
+    *response = client->getResponse();
+    *client_ptr = client;
+    return status;
+}
 
-    return n==-1?-1:0; // return -1 on failure, 0 on success
-} 
+static bool isFresh(HttpResponse& response)
+{
+    std::string expireHeader            = response.FindHeader("Expires");
+    const char html_date_format_string[] = "%a, %d %h %G %X %Z";
+    // never expires
+    if ("" == expireHeader)
+    {
+        return true;
+    }
+    
+    struct tm expire_time;
+
+    memset(&expire_time, 0, sizeof(expire_time));
+           
+    strptime(expireHeader.c_str(),
+             html_date_format_string, 
+            &expire_time);
+    
+    return (difftime(time(0), mktime(&expire_time)) > 0);
+}             
+                            // ----------
+                            // HTTPServer
+                            // ----------
+// =============================================================================
+//                          MEMBER FUNCTION DEFINTIONS
+// =============================================================================
 
 namespace mrm {
-                        // ----------
-                        // HTTPServer
-                        // ----------
+
+// CREATORS
+HTTPServer::HTTPServer() : d_sockfd(-1)
+{
+    d_cache_p = new HttpCache();
+}
+
+HTTPServer::~HTTPServer()
+{   
+    delete d_cache_p;
+}
 
 // MANIPULATORS
 int HTTPServer::startServer(int port)
@@ -139,38 +194,37 @@ int HTTPServer::acceptConnection()
         perror("listen");
         exit(1);
     }
-    int status = -1;
+
     socklen_t sin_size;
     struct sockaddr_storage their_addr; // connector's address information
-    int new_fd; // new connection on new_fd
+    int new_fd;                         // new connection on new_fd
     char s[INET6_ADDRSTRLEN];
     ssize_t request_size;
     char buff[BUFFER_SIZE];
     memset(buff,0, BUFFER_SIZE);
      
     sin_size = sizeof(their_addr);
-    // blocks!!!
     size_t fail_ctr = 0;
+    // This loop is in place to resolve issue of attempting to open socket
+    // before the OS has finished closing.
     do
     {
         new_fd = accept(d_sockfd, 
                         reinterpret_cast<struct sockaddr *>(&their_addr), 
                         &sin_size);
-        if (-1 == new_fd) 
-        {
-            perror("accept");
-            fail_ctr++;
-        }
-        if (fail_ctr >= 5)
-        {
-            return -1;
-        }
     }
-    while (fail_ctr < 5 && -1 == new_fd);
+    while (fail_ctr++ < 5 && -1 == new_fd);
+    
+    if (-1 == new_fd) 
+    {
+        perror("accept");
+        return -1;
+    }
+    
     
     struct timeval tv;
-
-    tv.tv_sec  = 10;
+    // send timeout
+    tv.tv_sec  = 120;
     tv.tv_usec = 500000;
     setsockopt(new_fd, 
                SOL_SOCKET, 
@@ -184,7 +238,8 @@ int HTTPServer::acceptConnection()
               sizeof(s));
     printf("server: got connection from %s\n", s);
 
-    if (!fork()) { // this is the child process
+    if (!fork()) 
+    { // this is the child process
         close(d_sockfd); // child doesn't need the listener
         // this is where we actually get the request from the server and 
         // start to try to handle it
@@ -195,7 +250,8 @@ int HTTPServer::acceptConnection()
         std::string reqURL;
         char *response_str;
         bool addToCache = true;
-        while (1) {
+        while (1) 
+        {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
                 perror("SERVER: recv");
@@ -207,23 +263,23 @@ int HTTPServer::acceptConnection()
                 }
                 exit(1);
             }
-            
-            if (request_size > 0)// && errno != EAGAIN)
+            // normal cases
+            if (request_size > 0 && errno != EAGAIN)
             {
                 try 
                 {
                     req.ParseRequest(buff, request_size);
                     reqURL = req.GetRequestURL();
-                    // validate the request
+                    // if invalid request, return invalid response
                     if (req.GetMethod() == HttpRequest::UNSUPPORTED)
                     {
                         response.SetStatusCode("501");
                         ssize_t response_size   = response.GetTotalLength();
                         response_str = new char [response_size];
-                        response.FormatResponse(response_str);
-                        if (sendall(new_fd,
-                                    response_str,
-                                    &response_size) == -1) 
+                        response.FormatResponse(response_str);  
+                        if (HttpUtil::sendall(new_fd,
+                                              response_str,
+                                             &response_size) == -1) 
                         {
                              perror("send");
                         }
@@ -238,55 +294,66 @@ int HTTPServer::acceptConnection()
                         cache.getFile(req.GetRequestURL(), &cache_response);
                         response.ParseResponse(cache_response.c_str(), 
                                                cache_response.length());
+                         
+                        /*
+                            // std::string headRequestStr 
+                                                 // = "HEAD "  + req.GetRequestURL()
+                                                 // + " HTTP/" + req.GetVersion() +
+                                                 // "\r\n\r\n";
+
+                            // HttpRequest headRequest;
+                            // headRequest.ParseRequest(headRequestStr.c_str(),
+                                                     // headRequestStr.length());
+                            // headRequest.SetPort(req.GetPort());
+                            // char buf[1024];
+                            // headRequest.FormatRequest(buf);
+                            // printf("\nRequest:\n--------- \n%s\n",buf);
+
+                            // HttpResponse headResponse;
+                            // requestFromServer(headRequest, 
+                                              // &client, 
+                                              // &headResponse);
+                            */
+                       if (!isFresh(response))
+                       {
+                            std::string lastModifiedDate = 
+                                           response.FindHeader("Last-Modified");
+                            req.AddHeader(std::string("If-Modified-Since"), 
+                                          lastModifiedDate);
+                            requestFromServer(req, 
+                                              &client, 
+                                              &response);
+                            addToCache = true;
+                            requestFromServer(req, &client, &response);
+                       }
+						else
+						{
+							std::cout << "Returning cached copy" << std::endl;
+						}
                     }
-                    
                     // otherwise get to from origin server
                     else
-                    {                        
+                    {                       
+                        std::cout << "Not cached" << std::endl;
                         addToCache = true;
-                        req.FormatRequest(buff);
-                        std::cout << "Full request: " << buff << std::endl;
-                        
-                        // create an HTTPClient Object
-                        if (NULL == client)
-                        {
-                            client = new HttpClient(req.GetHost(), req.GetPort());
-                            if ((status = client->createConnection()) != 0)
-                            {
-                                if (client)
-                                {
-                                    delete client;
-                                    client = NULL;
-                                }
-                                exit(status);
-                            }    
-                        }
-                        // pass in HTTPRequest, and have get the page
-                        if ((status = client->sendRequest(req)) != 0)
-                        {
-                            if (client)
-                            {
-                                delete client;
-                                client = NULL;
-                            }
-                            exit(status);
-                        }
-                        response = client->getResponse();
+                        requestFromServer(req,&client, &response);
                     }
                     // create HTTPResponeObject
                     ssize_t response_size = response.GetTotalLength();
-                    response_str = new char [response_size];
+                    response_str = new char[response_size];
                     response.FormatResponse(response_str);
+                    response_str[response_size] = '\0';
+                    
+                    // store to cache
                     if (addToCache)
                     {
-                        response_str[response_size] = '\0';
                         std::string r(response_str);
                         cache.cacheFile(reqURL, r);
                     }
                     // return response
-                    if (sendall(new_fd,
-                                response_str,
-                                &response_size) == -1) 
+                    if (HttpUtil::sendall(new_fd,
+                                    response_str,
+                                    &response_size) == -1) 
                     {
                          perror("send");
                     }
@@ -298,7 +365,7 @@ int HTTPServer::acceptConnection()
                     err.append(e.what());
                     err.append("\n");
                     ssize_t msg_size = err.length();
-                    if (sendall(new_fd, err.c_str(), &msg_size) == -1) 
+                    if (HttpUtil::sendall(new_fd, err.c_str(), &msg_size) == -1) 
                     {
                         perror("send");
                     }
@@ -316,7 +383,7 @@ int HTTPServer::acceptConnection()
             {
                 strcpy(buff,"\nserver: Connection timed out\n");   
                 request_size = strlen(buff);
-                if (sendall(new_fd, buff,&request_size) == -1)
+                if (HttpUtil::sendall(new_fd, buff,&request_size) == -1)
                 {
                     perror("send");
                 }

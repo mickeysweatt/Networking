@@ -56,7 +56,8 @@ def build (env):
             "http-response.cc",
             "http-server.cpp",
             "http-client.cpp",
-            "http-cache.cpp"
+            "http-cache.cpp",
+            "http-util.cpp"
             ]
         )
 

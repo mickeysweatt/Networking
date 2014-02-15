@@ -36,7 +36,7 @@ class TestHandler(BaseHTTPRequestHandler):
                 c_ts = calendar.timegm(time.gmtime())
                 if c_ts - m_ts > 5 and c_ts - m_ts < 10:
                     lastModify=lms
-                    expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.hit = True
                     self.send_response(304)
                     self.send_header('Expires',expireDate)
@@ -44,7 +44,7 @@ class TestHandler(BaseHTTPRequestHandler):
                 elif c_ts - m_ts > 10:
                     cdata = "OK"
                     size = len(cdata)
-                    expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     lastModify=(datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.send_response(200)
                     self.send_header('Content-type','text/html')
@@ -54,8 +54,8 @@ class TestHandler(BaseHTTPRequestHandler):
                 else:
                     cdata = "WRONG!\n"
                     size = len(cdata)
-                    expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
-                    lastModify=(datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    lastModify=(datetime.utcnow() - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.send_response(200)
                     self.send_header('Content-type','text/html')
                     self.send_header('Content-length', str(size))
@@ -65,8 +65,8 @@ class TestHandler(BaseHTTPRequestHandler):
             else:
                 cdata = open("./basic", "r").read()
                 size = len(cdata)
-                expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
-                lastModify=(datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                lastModify=(datetime.utcnow()- timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
                 self.send_response(200)
                 self.send_header('Content-type','text/html')
                 self.send_header('Content-length', str(size))

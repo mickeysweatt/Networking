@@ -43,7 +43,8 @@ public:
   enum MethodEnum
     {
       GET = 0,
-      UNSUPPORTED = 1
+      HEAD = 1, 
+      UNSUPPORTED = 2
     };
 
   /**

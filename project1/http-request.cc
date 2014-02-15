@@ -9,7 +9,6 @@
 
 #include <string> // C++ STL string
 #include <string.h> // helpers to copy C-style strings
-
 #include "compat.h"
 
 using namespace std;
@@ -57,12 +56,19 @@ HttpRequest::ParseRequest (const char *buffer, size_t size)
         throw ParseException ("Incorrectly formatted request");
     }
     // TRACE ("Token1: " << *token);
-    if (*token != "GET")
+    if (*token == "GET")
     {
-        throw ParseException ("Request is not GET");
+        SetMethod (GET);
     }
-    SetMethod (GET);
-
+    else if (*token == "HEAD")
+    {
+        SetMethod(HEAD);
+    }
+    else
+    {
+        throw ParseException ("Request not supported");
+    }    
+    
     // 2. Request path
     ++token;
     if (token == tokens.end ())
@@ -169,10 +175,10 @@ HttpRequest::ParseRequest (const char *buffer, size_t size)
 size_t
 HttpRequest::GetTotalLength () const
 {
-  if (m_method != GET)
-    throw ParseException ("Only GET method is supported");
+  if (m_method == UNSUPPORTED)
+    throw ParseException ("Method Unsupported");
       
-  size_t len = 4; // 'GET '
+  size_t len = m_method == GET ? 4 : 5; // 'GET ' : 'HEAD '
   len += m_path.size () + 1; // '<path> '
   len += 5; // 'HTTP/'
   len += m_version.size (); // '1.0'
@@ -188,12 +194,13 @@ HttpRequest::GetTotalLength () const
 char*
 HttpRequest::FormatRequest (char *buffer) const
 {
-  if (m_method != GET)
-    throw ParseException ("Only GET method is supported");
+  if (m_method == UNSUPPORTED)
+    throw ParseException ("Method Unsupported");
 
   char *bufLastPos = buffer;
   
-  bufLastPos = stpncpy (bufLastPos, "GET ", 4);
+  bufLastPos = m_method == GET ? stpncpy (bufLastPos, "GET ", 4) : 
+                                stpncpy (bufLastPos, "HEAD ", 5);
   bufLastPos = stpncpy (bufLastPos, m_path.c_str (), m_path.size ());
   bufLastPos = stpncpy (bufLastPos, " HTTP/", 6);
   bufLastPos = stpncpy (bufLastPos, m_version.c_str (), m_version.size ());
@@ -312,5 +319,6 @@ HttpRequest::SetVersion (const std::string &version)
 const std::string
 HttpRequest::GetRequestURL() const
 {
-    return m_host + "+" + m_path.substr(1);
+    std::string requestURL = m_host + m_path;
+    return requestURL;
 }
