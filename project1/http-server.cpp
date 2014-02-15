@@ -380,8 +380,8 @@ int HTTPServer::acceptConnection()
                             // if not unexpectec resutl
                             else if ("304" != conditionalGetResponse.GetStatusCode())
                             {
-                                printf("\t\tUNEXPECTED STATUS CODE %d\n", 
-                                       conditionalGetResponse.GetStatusCode());
+                                printf("\t\tUNEXPECTED STATUS CODE %s\n",
+                                conditionalGetResponse.GetStatusCode().c_str());
                                 response = conditionalGetResponse;
                             }
                             // otherwise the response is still the cached copy
@@ -416,7 +416,7 @@ int HTTPServer::acceptConnection()
                         std::string r(response_str);
                         cache.cacheFile(reqURL, r);
                     }
-                    printf("\t\tResponse to server:\n%s\n" , response_str);
+                    if(veryVeryVerbose) printf("\t\tSERVER: Response to client:\n%s\n" , response_str);
                     // return response
                     if (HttpUtil::sendall(new_fd,
                                     response_str,
