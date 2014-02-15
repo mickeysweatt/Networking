@@ -11,8 +11,11 @@
 #include <arpa/inet.h>
 #include <cstdio>
 
-
 #define BUFFER_SIZE 8096
+
+extern bool veryVerbose;
+extern bool veryVeryVerbose;
+extern bool verbose;
 
 HttpClient::HttpClient(std::string h, unsigned short p)
 {
@@ -64,7 +67,7 @@ int HttpClient::createConnection()
         //attempts to create socket
         if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
         {
-            std::cout << "Can't create socket" << std::endl;
+            perror("socket");
             continue;
         }
          
@@ -86,8 +89,9 @@ int HttpClient::createConnection()
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
     //None of the entries were valid
-  if(p == NULL){
-    std::cout << "Failed to connect" << std::endl;
+  if(p == NULL)
+  {
+    printf("Failed to connect\n");
     return -1;
   }
   freeaddrinfo(servinfo); //all done with this structure
@@ -107,9 +111,7 @@ int HttpClient::sendRequest(HttpRequest& request)
     char* sendbuf = new char[request.GetTotalLength()];
     request.FormatRequest(sendbuf);
     sendbuf[request.GetTotalLength()] = '\0';
-    std::cout << "\t\tFull request: " << std::endl
-              << "\t\t==============" << std::endl
-              << sendbuf          << std::endl;
+    if (veryVerbose) printf("\t\tFull request:\n\t\t==============\n%s\n\n",sendbuf);
   
     //send the request to server
     ssize_t len_req = static_cast<ssize_t>(strlen(sendbuf));
@@ -117,14 +119,9 @@ int HttpClient::sendRequest(HttpRequest& request)
     if ((numBytes = mrm::HttpUtil::sendall(sockfd, sendbuf, &len_req)) == -1)
     {
         perror("send");
-    }  
-  
-    //check if send failed
-    if(numBytes == -1){
-        std::cout << "Send failed!!!" << std::endl;
         close(sockfd);
         return -1;
-    }
+    }  
  
     //the position of the end of the header
     size_t endHeaderPos = -1;
@@ -168,9 +165,10 @@ int HttpClient::sendRequest(HttpRequest& request)
                 
 				if(response->GetStatusCode() != "200")
 				{
-                        std::cout << "\t\tResponse: " << std::endl
-                                  << "\t\t--------"   << std::endl
-                                  << response_str     << std::endl;
+                        if (veryVerbose) 
+                        {
+                            printf("\t\tResponse:--------\n                                    %s\n\n", response_str.c_str());
+                       }
                     delete [] sendbuf;
 					return 0;
 				}
@@ -181,11 +179,11 @@ int HttpClient::sendRequest(HttpRequest& request)
         else if(numBytes == 0)
         {
             close(sockfd);
-            std::cout << "CLIENT: Connection closed" << std::endl;
+            if (verbose) printf("CLIENT: Connection closed\n");
         }
         else
         {
-            std::cout << "CLIENT: Receive failed" << std::endl;
+            if (verbose) printf("CLIENT: Receive failed\n");
         }
 
         //checks if server is done sending the response
@@ -202,12 +200,11 @@ int HttpClient::sendRequest(HttpRequest& request)
 	  response->SetBody(response_str.substr(endHeaderPos+4));
 	}
 	else
+    {
 	  return -1;
-	  
+	}  
     delete [] sendbuf;
-    std::cout << "\t\tResponse: " << std::endl
-              << "\t\t--------"   << std::endl
-              << response_str     << std::endl;
+    if (veryVerbose) printf("\t\tResponse: \n\t\t--------\n%s\n", response_str.c_str());
     return 0;
 }
 

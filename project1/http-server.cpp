@@ -20,9 +20,14 @@
 #include <ctime>
 #include <iostream>
 
-#define BACKLOG 20     // how many pending connections queue will hold
-
+#define BACKLOG 20      // how many pending connections queue will hold
+#define MAX_CLIENTS 100 // how many outgoing connections we can have
 #define BUFFER_SIZE 8096
+
+extern bool verbose;
+extern bool veryVerbose;
+extern bool veryVeryVerbose;
+
 //==============================================================================
 //                    LOCAL FUNCTION DEFINITIONS
 //==============================================================================
@@ -75,23 +80,50 @@ static int requestFromServer(HttpRequest&   req,
 
 static bool isFresh(HttpResponse& response)
 {
-    std::string expireHeader            = response.FindHeader("Expires");
-    const char html_date_format_string[] = "%a, %d %h %G %X %Z";
-    // never expires
+    struct tm   expire_time;                              // A structure to hold
+                                                          // the expiration date
+    std::string expireHeader = response.FindHeader("Expires");
+    
+    const char html_date_format_string[] = 
+                                    "%a, %d %b %Y %X %Z"; // a format string for 
+                                                          // the HTTP Style 
+                                                          // time-date stamp
+    
+    // if no expire header found
     if ("" == expireHeader)
     {
-        return true;
+        // we check for a last modified time exists
+        // if one does than we can feasibly make a
+        // request from the server for a new copy
+        // and thus we return false, otherwise
+        // a conditional get makes no sense
+        // and we true true
+        return ("" != response.FindHeader("Last-Modified-Time"));
     }
-    
-    struct tm expire_time;
-
+        
     memset(&expire_time, 0, sizeof(expire_time));
-           
+    
+    // parse the expiration time from the response into a time object
     strptime(expireHeader.c_str(),
              html_date_format_string, 
             &expire_time);
-    
-    return (difftime(time(0), mktime(&expire_time)) > 0);
+    time_t now_t = time(NULL);
+    struct tm * now = gmtime(&now_t);
+    double diff = difftime(mktime(now), mktime(&expire_time));
+    char buf[256];
+    strftime (buf, 
+              256, 
+              html_date_format_string,
+              now);
+    if (veryVeryVerbose) printf("\t\tNow: %s\n",buf);
+    strftime (buf, 
+              256, 
+              html_date_format_string,
+              &expire_time);
+    if (veryVeryVerbose) printf("\t\tExpire: %s\n", buf);
+    if (veryVeryVerbose) printf("\t\tTime diff: %f\n", diff);
+    // return the current_time - expirationation_time > 0
+    return (diff < 0);
 }
 
 static int initializeClientConnection(int sockfd)
@@ -132,7 +164,7 @@ static int initializeClientConnection(int sockfd)
               get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
               s, 
               sizeof(s));
-    printf("server: got connection from %s\n", s);
+    if (verbose) printf("server: got connection from %s\n", s);
     
     struct timeval tv = {12, 500000};
     // send timeout for sending a receiving from the client
@@ -241,7 +273,7 @@ int HTTPServer::acceptConnection()
     
     memset(buff,0, BUFFER_SIZE);    
     
-    printf("server: waiting for connections...\n");
+    if (verbose) printf("server: waiting for connections...\n");
     
     if (listen(d_sockfd, BACKLOG) == -1) 
     {
@@ -255,17 +287,20 @@ int HTTPServer::acceptConnection()
         return -1;
     }
     if (!fork()) 
-    { // this is the child process
+    { 
+        // this is the child process
         close(d_sockfd); // child doesn't need the listener
         // this is where we actually get the request from the server and 
         // start to try to handle it
+        size_t maxClientsPerServer = MAX_CLIENTS/BACKLOG;
         HttpRequest  req;        
         HttpResponse response;
         HttpClient* client = NULL;
         HttpCache cache;
         std::string reqURL;
         char *response_str;
-        bool addToCache = true;
+        bool   addToCache = true;
+        size_t clientCount = 0;
         while (1) 
         {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
@@ -284,8 +319,11 @@ int HTTPServer::acceptConnection()
             {
                 try 
                 {
+                    // parse users request
                     req.ParseRequest(buff, request_size);
+                    
                     reqURL = req.GetRequestURL();
+                    
                     // if invalid request, return invalid response
                     if (req.GetMethod() == HttpRequest::UNSUPPORTED)
                     {
@@ -301,11 +339,12 @@ int HTTPServer::acceptConnection()
                         }
                         delete [] response_str;
                     }
+                    
                     // if in local cache
                     else if (cache.isCached(reqURL))
                     {
-                        printf("IM CACHED\n");
-                        addToCache = false;
+                        if (veryVerbose) printf("IM CACHED\n");
+                        // get response from cache
                         std::string cache_response;
                         cache.getFile(req.GetRequestURL(), &cache_response);
                         response.ParseResponse(cache_response.c_str(), 
@@ -315,6 +354,7 @@ int HTTPServer::acceptConnection()
                        // Stale copy in cache 
                        if (!isFresh(response))
                        {
+                            HttpResponse conditionalGetResponse; 
                             std::string lastModifiedDate = 
                                            response.FindHeader("Last-Modified");
                             req.AddHeader(std::string("If-Modified-Since"), 
@@ -323,22 +363,38 @@ int HTTPServer::acceptConnection()
                                               &client, 
                                               &response);
                             addToCache = true;
-                            requestFromServer(req, &client, &response);
-                                           // otherwise get to from origin server
+                            
+                            requestFromServer(req, 
+                                             &client,
+                                             &conditionalGetResponse);
+                            
+                            // we get a new page set  the response to this page
+                            if ("200" == response.GetStatusCode())
+                            {
+                                if (veryVerbose) printf("Refreshing cache\n");
+                                response = conditionalGetResponse;
+                                // refresh the cache
+                                addToCache = true;
+                            }
+                            // otherwise the response is still the cached copy
                         }
                         // Fresh copy in cache
                         else
                         {                       
-                            std::cout << "Fresh! Returning cached copy" << std::endl;
+                            if (veryVerbose) printf("Fresh! Returning cached copy\n");
                             addToCache = false;
                         }                       
                     }
                     // otherwise get to from origin server
                     else
                     {                       
-                        std::cout << "Not cached" << std::endl;
+                        if (veryVerbose) printf("Not cached\n");
                         addToCache = true;
-                        requestFromServer(req,&client, &response);
+                        if (clientCount < maxClientsPerServer)
+                        {
+                            clientCount++;
+                            requestFromServer(req,&client, &response);
+                        }
                     }
                     // create HTTPResponeObject
                     ssize_t response_size = response.GetTotalLength();
@@ -359,6 +415,7 @@ int HTTPServer::acceptConnection()
                     {
                          perror("send");
                     }
+                    clientCount = clientCount > 0? clientCount - 1 : 0;
                     delete [] response_str;
                 }
                 catch (ParseException e)

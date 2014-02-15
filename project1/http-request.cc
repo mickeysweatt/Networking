@@ -225,18 +225,6 @@ HttpRequest::SetMethod (HttpRequest::MethodEnum method)
   m_method = method;
 } 
 
-// const std::string &
-// HttpRequest::GetProtocol () const
-// {
-//   return m_protocol;
-// }
-
-// void
-// HttpRequest::SetProtocol (const std::string &protocol)
-// {
-//   m_protocol = protocol;
-// }
-
 const std::string &
 HttpRequest::GetHost () const
 {
@@ -294,7 +282,6 @@ HttpRequest::SetPort (unsigned short port)
 const std::string &
 HttpRequest::GetPath () const
 {
-  
   return m_path;
 }
   
@@ -319,6 +306,5 @@ HttpRequest::SetVersion (const std::string &version)
 const std::string
 HttpRequest::GetRequestURL() const
 {
-    std::string requestURL = m_host + m_path;
-    return requestURL;
+    return m_host + m_path;
 }

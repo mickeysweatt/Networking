@@ -1,0 +1,8 @@
+*.o
+basic*
+*.pyc
+.*
+scratch_pad*
+build/
+cache/
+gdb-*

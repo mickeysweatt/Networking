@@ -23,10 +23,20 @@ static void sigchld_handler(int s)
         exit(1); \
     }
 
- 
-    
-int main(void)
+int verbosity = 0;
+bool verbose         = false;
+bool veryVerbose     = false;
+bool veryVeryVerbose = false;
+
+int main( int argc, const char* argv[] )
 {
+   if (argc >= 2)
+   {
+        verbosity = atoi(argv[1]);
+        verbose         = verbosity > 0 ? true : false;
+        veryVerbose     = verbosity > 1 ? true : false;
+        veryVeryVerbose = verbosity > 2 ? true : false;
+   }
    set_up_signal_handler();
     
     mrm::HTTPServer server;
