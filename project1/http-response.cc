@@ -159,11 +159,14 @@ HttpResponse::SetStatusCode(const std::string &code)
     }
     switch(code_num)
     {
-        case 200 :{
+        case 200:{
             SetStatusMsg("OK");
         } break;
-        case 304 : {
+        case 304: {
             SetStatusMsg("Not Modified");
+        } break;
+        case 400: {
+            SetStatusMsg("Bad Request");
         } break;
         case 404: {
             SetStatusMsg("Not Found");

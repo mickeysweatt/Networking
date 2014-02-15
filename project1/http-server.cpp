@@ -8,30 +8,82 @@
 #include "http-client.h"
 #include "http-cache.h"
 #include "http-util.h"
-#include <stdlib.h>
-#include <unistd.h>
+#include <arpa/inet.h>
+#include <ctime>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <cstdio>
+#include <cstdlib>
 #include <string.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <errno.h>
-#include <ctime>
+#include <unistd.h>
 
 #define BACKLOG 20      // how many pending connections queue will hold
 #define MAX_CLIENTS 100 // how many outgoing connections we can have
 #define BUFFER_SIZE 8096
 
+
+//------------------------------------------------------------------------------
+//                      GLOBAL VARIABLES
+//------------------------------------------------------------------------------
 extern bool verbose;
 extern bool veryVerbose;
 extern bool veryVeryVerbose;
+
+//------------------------------------------------------------------------------
+//                      LOCAL FUNCTION DECLARATIONS
+//------------------------------------------------------------------------------
+static void *get_in_addr(struct sockaddr *sa);
+    // get sockaddr, IPv4 or IPv6:
+
+static int requestFromServer(HttpRequest&   req, 
+                             HttpClient   **client_ptr, 
+                             HttpResponse  *response);
+
+static bool isFresh(HttpResponse& response);
+
+static int initializeClientConnection(int sockfd);
+
+static int sendResponse(const HttpResponse& response, 
+                        const int           sockfd, 
+                        bool                addToCache,
+                        HttpCache*          cache_p,
+                        std::string*        reqURL_p)
+{
+    // create HTTPResponeObject
+    ssize_t response_size = response.GetTotalLength();
+    char *response_str = new char[response_size];
+    response.FormatResponse(response_str);
+    response_str[response_size] = '\0';
+    
+    // store to cache
+    if (cache_p && reqURL_p && addToCache)
+    {
+        std::string r(response_str);
+        cache_p->cacheFile(*reqURL_p, r);
+    }
+    if(veryVeryVerbose) 
+        printf("\t\tSERVER: Response to client:\n%s\n" , response_str);
+    
+    // return response
+    if (mrm::HttpUtil::sendall(sockfd,
+                               response_str,
+                              &response_size) == -1) 
+    {
+         char err[100];
+         sprintf(err, "%s%d: send", __FILE__, __LINE__);
+         perror(err);
+         delete [] response_str;
+         return -1;
+    }
+    return 0;
+}
 
 //==============================================================================
 //                    LOCAL FUNCTION DEFINITIONS
 //==============================================================================
 
-// get sockaddr, IPv4 or IPv6:
 static void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
@@ -43,8 +95,7 @@ static void *get_in_addr(struct sockaddr *sa)
 
 static int requestFromServer(HttpRequest&   req, 
                              HttpClient   **client_ptr, 
-                             HttpResponse  *response
-                            )
+                             HttpResponse  *response)
 {
     HttpClient *client = *client_ptr;
     int status = -1;
@@ -157,7 +208,9 @@ static int initializeClientConnection(int sockfd)
     // if after the loop completion we still have error state
     if (-1 == new_fd) 
     {
-        perror("accept");
+        char err[100];
+        sprintf(err, "%s%d: accept", __FILE__, __LINE__);
+        perror(err);
         return -1;
     }
     
@@ -168,7 +221,7 @@ static int initializeClientConnection(int sockfd)
     if (verbose) printf("server: got connection from %s\n", s);
     
     struct timeval tv = {12, 500000};
-    // send timeout for sending a receiving from the client
+    // send timeout for sending and receiving from the client
     setsockopt(new_fd, 
                SOL_SOCKET, 
                SO_RCVTIMEO, 
@@ -219,7 +272,9 @@ int HTTPServer::startServer(int port)
                       p->ai_socktype,
                       p->ai_protocol)) == -1) 
         {
-            perror("server: socket");
+            char err[100];
+            sprintf(err, "%s:%d - socket", __FILE__, __LINE__);
+            perror(err);
             continue;
         }
 
@@ -229,14 +284,18 @@ int HTTPServer::startServer(int port)
                        &yes, 
                        sizeof(int)) == -1) 
         {
-            perror("setsockopt");
+            char err[100];
+            sprintf(err, "%s:%d - setsockopt", __FILE__, __LINE__);
+            perror(err);
             exit(1);
         }
 
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) 
         {
             close(sockfd);
-            perror("server: bind");
+            char err[100];
+            sprintf(err, "%s:%d - bind", __FILE__, __LINE__);
+            perror(err);
             continue;
         }
         
@@ -250,19 +309,23 @@ int HTTPServer::startServer(int port)
 
     freeaddrinfo(servinfo); // all done with this structure
     
-    struct timeval tv;
+    struct timeval tv = {10, 500000};
 
-    tv.tv_sec = 10;
-    tv.tv_usec = 500000;
-
+    // set the timeouts
     setsockopt(sockfd, 
                SOL_SOCKET, 
                SO_RCVTIMEO, 
                reinterpret_cast<char *>(&tv),
                sizeof(struct timeval));
                
-    d_sockfd = sockfd;
-    return 0;
+    setsockopt(sockfd, 
+               SOL_SOCKET, 
+               SO_SNDTIMEO, 
+               reinterpret_cast<char *>(&tv),
+               sizeof(struct timeval));
+               
+    d_sockfd = sockfd >= 0 ? sockfd : -1;
+    return d_sockfd >= 0 ? 0 : -1;
 }
 
 int HTTPServer::acceptConnection()
@@ -280,7 +343,9 @@ int HTTPServer::acceptConnection()
     
     if (listen(d_sockfd, BACKLOG) == -1) 
     {
-        perror("listen");
+        char err[100];
+        sprintf(err, "%s:%d - listen", __FILE__, __LINE__);
+        perror(err);
         exit(1);
     }
     
@@ -301,14 +366,16 @@ int HTTPServer::acceptConnection()
         HttpClient* client = NULL;
         HttpCache cache;
         std::string reqURL;
-        char *response_str;
+        
         bool   addToCache = true;
         size_t clientCount = 0;
         while (1) 
         {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
-                perror("SERVER: recv");
+                char err[100];
+                sprintf(err, "%s:%d - recv", __FILE__, __LINE__);
+                perror(err);
                 close(new_fd);
                 if (client)
                 {
@@ -324,35 +391,33 @@ int HTTPServer::acceptConnection()
                 {
                     // parse users request
                     req.ParseRequest(buff, request_size);
-                    
                     reqURL = req.GetRequestURL();
                     
                     // if invalid request, return invalid response
                     if (req.GetMethod() == HttpRequest::UNSUPPORTED)
                     {
                         response.SetStatusCode("501");
-                        ssize_t response_size   = response.GetTotalLength();
-                        response_str = new char [response_size];
-                        response.FormatResponse(response_str);  
-                        if (HttpUtil::sendall(new_fd,
-                                              response_str,
-                                             &response_size) == -1) 
+                        if (-1 == sendResponse(response, 
+                                               new_fd, 
+                                               false, 
+                                               NULL, 
+                                               NULL))
                         {
-                             perror("send");
+                            fprintf(stderr, "%s:%d - Could not send\n", __FILE__,
+                                                                        __LINE__);
                         }
-                        delete [] response_str;
                     }
                     
                     // if in local cache
                     else if (cache.isCached(reqURL))
                     {
                         if (veryVerbose) printf("IM CACHED\n");
+                        
                         // get response from cache
                         std::string cache_response;
                         cache.getFile(req.GetRequestURL(), &cache_response);
                         response.ParseResponse(cache_response.c_str(), 
                                                cache_response.length());
-                         
 
                        // Stale copy in cache 
                        if (!isFresh(response))
@@ -380,8 +445,9 @@ int HTTPServer::acceptConnection()
                             // if not unexpectec resutl
                             else if ("304" != conditionalGetResponse.GetStatusCode())
                             {
-                                printf("\t\tUNEXPECTED STATUS CODE %s\n",
-                                conditionalGetResponse.GetStatusCode().c_str());
+                                fprintf(stderr, 
+                                        "\t\tUNEXPECTED STATUS CODE %s\n",
+                                        conditionalGetResponse.GetStatusCode().c_str());
                                 response = conditionalGetResponse;
                             }
                             // otherwise the response is still the cached copy
@@ -389,7 +455,8 @@ int HTTPServer::acceptConnection()
                         // Fresh copy in cache
                         else
                         {                       
-                            if (veryVerbose) printf("Fresh! Returning cached copy\n");
+                            if (veryVerbose) 
+                                printf("Fresh! Returning cached copy\n");
                             addToCache = false;
                         }                       
                     }
@@ -404,44 +471,30 @@ int HTTPServer::acceptConnection()
                             requestFromServer(req,&client, &response);
                         }
                     }
-                    // create HTTPResponeObject
-                    ssize_t response_size = response.GetTotalLength();
-                    response_str = new char[response_size];
-                    response.FormatResponse(response_str);
-                    response_str[response_size] = '\0';
-                    
-                    // store to cache
-                    if (addToCache)
+                    // return the respose to the client
+                    if (-1 == sendResponse(response, 
+                                           new_fd, 
+                                           addToCache,
+                                          &cache,
+                                          &reqURL))
                     {
-                        std::string r(response_str);
-                        cache.cacheFile(reqURL, r);
+                        fprintf(stderr, "%s:%d - Could not send\n", __FILE__,
+                                                                  __LINE__);
                     }
-                    if(veryVeryVerbose) printf("\t\tSERVER: Response to client:\n%s\n" , response_str);
-                    // return response
-                    if (HttpUtil::sendall(new_fd,
-                                    response_str,
-                                    &response_size) == -1) 
-                    {
-                         perror("send");
-                    }
-                    clientCount = clientCount > 0? clientCount - 1 : 0;
-                    delete [] response_str;
                 }
+                // if an exception is passed return a 400 error to the user
                 catch (ParseException e)
                 {
-                    std::string err = "Error: ";
-                    err.append(e.what());
-                    err.append("\n");
-                    ssize_t msg_size = err.length();
-                    if (HttpUtil::sendall(new_fd, err.c_str(), &msg_size) == -1) 
+                    response.SetBody("");
+                    response.SetStatusCode("400");
+                    if (sendResponse(response, 
+                                      new_fd, 
+                                      addToCache,
+                                     &cache,
+                                     &reqURL) == -1)
                     {
-                        perror("send");
-                    }
-                    close(new_fd);
-                    if (client)
-                    {
-                        delete client;
-                        client = NULL;
+                        fprintf(stderr, "%s:%d - Could not send\n", __FILE__,
+                                                                  __LINE__);
                     }
                     exit(1);
                 }
@@ -452,7 +505,9 @@ int HTTPServer::acceptConnection()
                 request_size = strlen(buff);
                 if (HttpUtil::sendall(new_fd, buff,&request_size) == -1)
                 {
-                    perror("send");
+                    char err[100];
+                    sprintf(err, "%s%d - send", __FILE__, __LINE__);
+                    perror(err);
                 }
                 if (client)
                 {
