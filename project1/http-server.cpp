@@ -325,11 +325,6 @@ int HTTPServer::acceptConnection()
                                               &response);
                             addToCache = true;
                             requestFromServer(req, &client, &response);
-                       }
-						else
-						{
-							std::cout << "Returning cached copy" << std::endl;
-						}
                     }
                     // otherwise get to from origin server
                     else
@@ -359,6 +354,7 @@ int HTTPServer::acceptConnection()
                     }
                     delete [] response_str;
                 }
+            }
                 catch (ParseException e)
                 {
                     std::string err = "Error: ";
