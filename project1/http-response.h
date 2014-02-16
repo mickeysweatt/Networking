@@ -8,7 +8,7 @@
 #ifndef _HTTP_RESPONSE_H_
 #define _HTTP_RESPONSE_H_
 
-#include "http-headers.h"
+#include <http-headers.h>
 
 /**
  * @brief Class to parse/create HTTP responses
@@ -28,6 +28,7 @@ public:
    */
   HttpResponse ();
   
+  ~HttpResponse();
   /**
    * @brief Parse HTTP header 
    *
@@ -107,5 +108,6 @@ private:
   std::string m_statusMsg;
   std::string m_body;
 };
+
 
 #endif // _HTTP_RESPONSE_H_

@@ -1,4 +1,4 @@
-#include "compat.h"
+#include <compat.h>
 
 #ifndef HAVE_MEMMEM
 

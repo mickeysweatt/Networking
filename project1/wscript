@@ -23,7 +23,7 @@ def configure (env):
     env.check_boost(lib='system thread')
 
     if debug:
-        env.add_supported_cxxflags (cxxflags = ['-O0', '-g3', '-Wall', '-Wextra', '-pedantic', '-Wold-style-cast',
+        env.add_supported_cxxflags (cxxflags = ['-I..' , '-O3', '-g3', '-Wall', '-Wextra', '-pedantic', '-Wold-style-cast',
                                             '-Woverloaded-virtual', '-Wctor-dtor-privacy', '-Wconversion',
                                             '-Wfloat-equal','-Wformat=2', '-Winit-self', '-Winline',
                                             '-Wmissing-include-dirs', '-Wredundant-decls', '-Wshadow', '-Wstack-protector', 
@@ -33,7 +33,7 @@ def configure (env):
                                             '-Wwrite-strings', '-Winline', '-Wvolatile-register-var', '-Wno-unused-parameter',
                                             '-Wno-variadic-macros'])
     else:
-        env.add_supported_cxxflags (cxxflags = ['-I.', '-Wall', 
+        env.add_supported_cxxflags (cxxflags = ['-I..', '-Wall', 
                                             '-fcolor-diagnostics', '-Wunused-arguments', 
                                             '-Werror'])
 
@@ -57,7 +57,8 @@ def build (env):
             "http-server.cpp",
             "http-client.cpp",
             "http-cache.cpp",
-            "http-util.cpp"
+            "http-util.cpp",
+            "my_stdio.cpp"
             ]
         )
 

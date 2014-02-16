@@ -1,13 +1,15 @@
 // HTTPServer.cpp                                                      -*-C++-*-
 // Beej's Guide to Network Programming used as a background template
 // http://beej.us/guide/bgnet/output/html/multipage/clientserver.html
-#include "http-server.h"
-#include "http-request.h"
-#include "http-response.h"
-#include "http-headers.h"
-#include "http-client.h"
-#include "http-cache.h"
-#include "http-util.h"
+#include <http-server.h>
+#include <http-request.h>
+#include <http-response.h>
+#include <http-headers.h>
+#include <http-client.h>
+#include <http-cache.h>
+#include <http-util.h>
+#include <my_stdio.h>
+
 #include <arpa/inet.h>
 #include <ctime>
 #include <errno.h>
@@ -34,8 +36,6 @@ extern bool veryVeryVerbose;
 //------------------------------------------------------------------------------
 //                      LOCAL FUNCTION DECLARATIONS
 //------------------------------------------------------------------------------
-static void *get_in_addr(struct sockaddr *sa);
-    // get sockaddr, IPv4 or IPv6:
 
 static int requestFromServer(HttpRequest&   req, 
                              HttpClient   **client_ptr, 
@@ -71,11 +71,7 @@ static int sendResponse(const HttpResponse& response,
                                response_str,
                               &response_size) == -1) 
     {
-         char err[100];
-         sprintf(err, "%s%d: send", __FILE__, __LINE__);
-         perror(err);
-         delete [] response_str;
-         return -1;
+        return -1;
     }
     return 0;
 }
@@ -83,15 +79,6 @@ static int sendResponse(const HttpResponse& response,
 //==============================================================================
 //                    LOCAL FUNCTION DEFINITIONS
 //==============================================================================
-
-static void *get_in_addr(struct sockaddr *sa)
-{
-    if (sa->sa_family == AF_INET) {
-        return &(reinterpret_cast<struct sockaddr_in*>(sa)->sin_addr);
-    }
-
-    return &(reinterpret_cast<struct sockaddr_in6*>(sa)->sin6_addr);
-}
 
 static int requestFromServer(HttpRequest&   req, 
                              HttpClient   **client_ptr, 
@@ -167,7 +154,7 @@ static bool isFresh(HttpResponse& response)
               256, 
               html_date_format_string,
               now);
-    if (veryVeryVerbose) printf("\t\tNow: %s\n",buf);
+    if (veryVeryVerbose) printf("\t\tNow: %ss\n",buf);
     strftime (buf, 
               256, 
               html_date_format_string,
@@ -183,12 +170,9 @@ static int initializeClientConnection(int sockfd)
     socklen_t sin_size;                       // the size of the socket 
                                               // IN Address
                                               
-    struct sockaddr_storage their_addr;       // connector's address information
+    struct sockaddr their_addr;               // connector's address information
     
     int new_fd;                               // new connection on new_fd
-    
-    char s[INET6_ADDRSTRLEN];                 // an array to hold the address of
-                                              // of the requesting client
                                                         
     sin_size = sizeof(their_addr);
     
@@ -208,17 +192,9 @@ static int initializeClientConnection(int sockfd)
     // if after the loop completion we still have error state
     if (-1 == new_fd) 
     {
-        char err[100];
-        sprintf(err, "%s%d: accept", __FILE__, __LINE__);
-        perror(err);
+        Perror("accept", errno);
         return -1;
     }
-    
-    inet_ntop(their_addr.ss_family,
-              get_in_addr(reinterpret_cast<struct sockaddr *>(&their_addr)),
-              s, 
-              sizeof(s));
-    if (verbose) printf("server: got connection from %s\n", s);
     
     struct timeval tv = {12, 500000};
     // send timeout for sending and receiving from the client
@@ -248,9 +224,9 @@ namespace mrm {
 // MANIPULATORS
 int HTTPServer::startServer(int port)
 {
-    int sockfd;  // listen on sock_fd
+    int sockfd = -1;  // listen on sock_fd
     struct addrinfo hints, *servinfo;
-    int yes=1, rv;
+    int yes = 1, rv;
     char PORT[] = "xxxx";
     
     if (sprintf(PORT,"%d", port) < 0) exit(1);
@@ -272,9 +248,7 @@ int HTTPServer::startServer(int port)
                       p->ai_socktype,
                       p->ai_protocol)) == -1) 
         {
-            char err[100];
-            sprintf(err, "%s:%d - socket", __FILE__, __LINE__);
-            perror(err);
+            Perror("socket", errno);
             continue;
         }
 
@@ -284,18 +258,14 @@ int HTTPServer::startServer(int port)
                        &yes, 
                        sizeof(int)) == -1) 
         {
-            char err[100];
-            sprintf(err, "%s:%d - setsockopt", __FILE__, __LINE__);
-            perror(err);
+            Perror("setsockopt", errno);
             exit(1);
         }
 
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) 
         {
             close(sockfd);
-            char err[100];
-            sprintf(err, "%s:%d - bind", __FILE__, __LINE__);
-            perror(err);
+            Perror("bind", errno);
             continue;
         }
         
@@ -343,9 +313,7 @@ int HTTPServer::acceptConnection()
     
     if (listen(d_sockfd, BACKLOG) == -1) 
     {
-        char err[100];
-        sprintf(err, "%s:%d - listen", __FILE__, __LINE__);
-        perror(err);
+        Perror("listen", errno);
         exit(1);
     }
     
@@ -373,9 +341,7 @@ int HTTPServer::acceptConnection()
         {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
             {
-                char err[100];
-                sprintf(err, "%s:%d - recv", __FILE__, __LINE__);
-                perror(err);
+                Perror("recv", errno);
                 close(new_fd);
                 if (client)
                 {
@@ -505,9 +471,7 @@ int HTTPServer::acceptConnection()
                 request_size = strlen(buff);
                 if (HttpUtil::sendall(new_fd, buff,&request_size) == -1)
                 {
-                    char err[100];
-                    sprintf(err, "%s%d - send", __FILE__, __LINE__);
-                    perror(err);
+                    Perror("send", errno);
                 }
                 if (client)
                 {

@@ -1,5 +1,5 @@
 // HttpUtil.cpp                                                        -*-C++-*-
-#include "http-util.h"
+#include <http-util.h>
 #include <arpa/inet.h>
 
 //namespace cs118 {
@@ -10,7 +10,7 @@ int HttpUtil::sendall(int sockfd, const char *buf, ssize_t *len)
 {
     ssize_t total = 0;        // how many bytes we've sent
     size_t bytesleft = *len; // how many we have left to send
-    ssize_t n;
+    ssize_t n = 0;
 
     while(total < *len) {
         n = send(sockfd, buf+total, bytesleft, 0);

@@ -1,8 +1,7 @@
-#include "http-client.h"
-#include "http-request.h"
-#include "http-response.h"
-#include "http-util.h"
-#include <iostream>
+#include <http-client.h>
+#include <http-request.h>
+#include <http-response.h>
+#include <http-util.h>
 #include <string.h>
 #include <errno.h>
 #include <cstdlib>
@@ -16,6 +15,7 @@
 extern bool veryVerbose;
 extern bool veryVeryVerbose;
 extern bool verbose;
+
 
 HttpClient::HttpClient(std::string h, unsigned short p)
 {

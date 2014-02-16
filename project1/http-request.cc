@@ -5,11 +5,11 @@
  * Skeleton for UCLA CS118 Winter'14 class
  */
 
-#include "http-request.h"
+#include <http-request.h>
 
 #include <string> // C++ STL string
 #include <string.h> // helpers to copy C-style strings
-#include "compat.h"
+#include <compat.h>
 
 using namespace std;
 

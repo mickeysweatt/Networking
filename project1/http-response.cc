@@ -2,15 +2,16 @@
 /**
  * @file Implementation for HttpResponse class
  *
- * Skeleton for UCLA CS118 Winter'14 class
+ * Skeleton for UCLA CS118 Winter'14 class with modifications from Michael 
+   Sweatt and Matthew Nyguen       
  */
 
-#include "http-response.h"
+#include <http-response.h>
 
 #include <string> // C++ STL string
 #include <string.h> // helpers to copy C-style strings
 #include <cstdio>
-#include "compat.h"
+#include <compat.h>
 
 using namespace std;
 
@@ -26,6 +27,10 @@ using namespace std;
 #include <boost/lexical_cast.hpp>
 
 HttpResponse::HttpResponse ()
+{
+}
+
+HttpResponse::~HttpResponse ()
 {
 }
   
