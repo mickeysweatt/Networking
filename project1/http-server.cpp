@@ -48,7 +48,7 @@ static int initializeClientConnection(int sockfd);
 static int sendResponse(const HttpResponse& response, 
                         const int           sockfd, 
                         bool                addToCache,
-                        HttpCache*          cache_p,
+                        mrm::HttpCache*     cache_p,
                         std::string*        reqURL_p)
 {
     // create HTTPResponeObject
@@ -85,35 +85,27 @@ static int requestFromServer(HttpRequest&   req,
                              HttpResponse  *response)
 {
     HttpClient *client = *client_ptr;
-    int status = -1;
+    int status = 0;
     
     // create an HTTPClient Object
     if (NULL == client)
     {
         client = new HttpClient(req.GetHost(), req.GetPort());
-        if ((status = client->createConnection()) != 0)
-        {
-            if (client)
-            {
-                delete client;
-                client = NULL;
-            }
-            return status;
-        }    
+        status = client->createConnection();  
     }
     
     // pass in HTTPRequest, and have get the page
-    if ((status = client->sendRequest(req)) != 0)
+    if (!status && (status = client->sendRequest(req)) == 0)
     {
-        if (client)
-        {
-            delete client;
-            client = NULL;
-        }
-        return status;
+        *response = client->getResponse();
+        *client_ptr = client;
     }
-    *response = client->getResponse();
-    *client_ptr = client;
+    if (status < 0 && client)
+    {
+        delete client;
+        client = NULL;
+    }
+
     return status;
 }
 
@@ -148,19 +140,22 @@ static bool isFresh(HttpResponse& response)
             &expire_time);
     time_t now_t = time(NULL);
     struct tm * now = gmtime(&now_t);
-    double diff = difftime(mktime(now), mktime(&expire_time));
-    char buf[256];
-    strftime (buf, 
-              256, 
-              html_date_format_string,
-              now);
-    if (veryVeryVerbose) printf("\t\tNow: %ss\n",buf);
-    strftime (buf, 
-              256, 
-              html_date_format_string,
-              &expire_time);
-    if (veryVeryVerbose) printf("\t\tExpire: %s\n", buf);
-    if (veryVeryVerbose) printf("\t\tTime diff: %f\n", diff);
+    const double diff = difftime(mktime(now), mktime(&expire_time));
+    if (veryVeryVerbose)
+    {
+        char buf[256];
+        strftime (buf, 
+                  256, 
+                  html_date_format_string,
+                  now);
+        printf("\t\tNow: %ss\n",buf);
+        strftime (buf, 
+                  256, 
+                  html_date_format_string,
+                  &expire_time);
+        printf("\t\tExpire: %s\n", buf);
+        printf("\t\tTime diff: %f\n", diff);
+    }
     // return the current_time - expirationation_time > 0
     return (diff < 0);
 }
@@ -300,7 +295,7 @@ int HTTPServer::startServer(int port)
 
 int HTTPServer::acceptConnection()
 {
-    ssize_t request_size;        // the number of bytes of the
+    ssize_t request_size;       // the number of bytes of the
                                 // client's request
                                               
     char buff[BUFFER_SIZE];     // the buffer to hold the request
@@ -324,19 +319,46 @@ int HTTPServer::acceptConnection()
     }
     if (!fork()) 
     { 
-        // this is the child process
-        close(d_sockfd); // child doesn't need the listener
         // this is where we actually get the request from the server and 
         // start to try to handle it
-        size_t maxClientsPerServer = MAX_CLIENTS/BACKLOG;
-        HttpRequest  req;        
-        HttpResponse response;
-        HttpClient* client = NULL;
-        HttpCache cache;
-        std::string reqURL;
         
-        bool   addToCache = true;
-        size_t clientCount = 0;
+        close(d_sockfd); // child doesn't need the listener
+        
+        size_t      maxClientsPerServer = MAX_CLIENTS/BACKLOG;  
+                                                            // the maximum 
+                                                            // number of clients
+                                                           // each server
+                                                           // process will start
+        
+        HttpRequest req;                                  // a request which we
+                                                           // we get from the 
+                                                           // client
+        
+        HttpResponse response;                             // the response we 
+                                                           // will return to the
+                                                           // client
+        
+        HttpClient *client = NULL;                         // the client that 
+                                                           // will serve the 
+                                                           // user's requests
+        
+        HttpCache   cache;                                 // the cache object
+                                                           // to store responses
+        
+        std::string reqURL;                                // a storage of the
+                                                           // absolute url for
+                                                           // the user's request
+        
+        bool   addToCache = true;                          // whether to persist
+                                                           // the response to 
+                                                           // cache
+        
+        size_t clientCount = 0;                             // a counter of the
+                                                            // number of clients
+                                                            // this instance of
+                                                            // the server has
+                                                            // currently running
+        
         while (1) 
         {
             if ((request_size = recv(new_fd, buff, BUFFER_SIZE, 0)) == -1)
@@ -388,12 +410,13 @@ int HTTPServer::acceptConnection()
                        // Stale copy in cache 
                        if (!isFresh(response))
                        {
+                            // create a response object to hold the conditional
+                            // GET
                             HttpResponse conditionalGetResponse; 
                             std::string lastModifiedDate = 
                                            response.FindHeader("Last-Modified");
                             req.AddHeader(std::string("If-Modified-Since"), 
                                           lastModifiedDate);
-                            addToCache = true;
                             
                             requestFromServer(req, 
                                              &client,
@@ -408,9 +431,10 @@ int HTTPServer::acceptConnection()
                                 addToCache = true;
                             }
                             
-                            // if not unexpectec resutl
+                            // if not unexpected result
                             else if ("304" != conditionalGetResponse.GetStatusCode())
                             {
+                                addToCache = false;
                                 fprintf(stderr, 
                                         "\t\tUNEXPECTED STATUS CODE %s\n",
                                         conditionalGetResponse.GetStatusCode().c_str());
@@ -437,7 +461,7 @@ int HTTPServer::acceptConnection()
                             requestFromServer(req,&client, &response);
                         }
                     }
-                    // return the respose to the client
+                    // return the response to the client
                     if (-1 == sendResponse(response, 
                                            new_fd, 
                                            addToCache,

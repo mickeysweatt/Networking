@@ -4,7 +4,6 @@ from threading import Thread
 from httplib import HTTPConnection
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from datetime import datetime, timedelta
-#from bcolor import bcolors
 import sys
 import time
 import re, socket, calendar
@@ -12,7 +11,7 @@ import re, socket, calendar
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
+    PASS = '\033[92m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
@@ -36,7 +35,7 @@ class TestHandler(BaseHTTPRequestHandler):
                 c_ts = calendar.timegm(time.gmtime())
                 if c_ts - m_ts > 5 and c_ts - m_ts < 10:
                     lastModify=lms
-                    expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.hit = True
                     self.send_response(304)
                     self.send_header('Expires',expireDate)
@@ -44,7 +43,7 @@ class TestHandler(BaseHTTPRequestHandler):
                 elif c_ts - m_ts > 10:
                     cdata = "OK"
                     size = len(cdata)
-                    expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     lastModify=(datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.send_response(200)
                     self.send_header('Content-type','text/html')
@@ -54,8 +53,8 @@ class TestHandler(BaseHTTPRequestHandler):
                 else:
                     cdata = "WRONG!\n"
                     size = len(cdata)
-                    expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
-                    lastModify=(datetime.utcnow() - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    lastModify=(datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.send_response(200)
                     self.send_header('Content-type','text/html')
                     self.send_header('Content-length', str(size))
@@ -65,8 +64,8 @@ class TestHandler(BaseHTTPRequestHandler):
             else:
                 cdata = open("./basic", "r").read()
                 size = len(cdata)
-                expireDate=(datetime.utcnow()+timedelta(seconds=5) - timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
-                lastModify=(datetime.utcnow()- timedelta(days=1)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                expireDate=(datetime.utcnow()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                lastModify=(datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S GMT")
                 self.send_response(200)
                 self.send_header('Content-type','text/html')
                 self.send_header('Content-length', str(size))
@@ -146,4 +145,3 @@ except:
     server1.server.shutdown()
 
 server1.server.shutdown()
-

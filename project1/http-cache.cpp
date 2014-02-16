@@ -17,6 +17,8 @@ static std::string createFileNameForURL(const std::string& url)
     return file_name;
 }
 
+namespace mrm {
+
 HttpCache::HttpCache()
 {
     struct stat s;
@@ -83,3 +85,4 @@ int HttpCache::cacheFile(const std::string& url, std::string& contents) const
     return ((write(fd, contents.c_str(), contents.length()) < 0) & close(fd));
 }
 
+}

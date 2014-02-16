@@ -14,7 +14,7 @@ from time import sleep
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
+    PASS = '\033[92m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'
@@ -30,13 +30,11 @@ class bcolors:
 class TestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
-        print "HERE"
         if self.path == "/basic":
             lms = self.headers.get('If-Modified-Since', "")
             cdata = ""
-             time_format_str = "%a, %d %b %Y %H:%M:%S %Z"
             if lms != "":
-                m_ts = datetime.strptime(lms, time_format_str)
+                m_ts = datetime.strptime(lms, "%a, %d %b %Y %H:%M:%S GMT")
                 c_ts = datetime.now()
                 
                 diff = c_ts - m_ts
@@ -44,7 +42,7 @@ class TestHandler(BaseHTTPRequestHandler):
                 # this is a current version of the content
                 if diff.seconds > 5 and diff.seconds < 10:
                     lastModify=lms
-                    expireDate=(datetime.now()+timedelta(seconds=5)).strftime(time_format_str)
+                    expireDate=(datetime.now()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.hit = True
                     self.send_response(304)
                     self.send_header('Expires',expireDate)
@@ -53,8 +51,8 @@ class TestHandler(BaseHTTPRequestHandler):
                 elif diff.seconds > 10:
                     cdata = "OK"
                     size = len(cdata)
-                    expireDate=(datetime.now()+timedelta(seconds=5)).strftime(time_format_str)
-                    lastModify=(datetime.now()).strftime(time_format_str)
+                    expireDate=(datetime.now()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    lastModify=(datetime.now()).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.send_response(200)
                     self.send_header('Content-type','text/html')
                     self.send_header('Content-length', str(size))
@@ -64,8 +62,8 @@ class TestHandler(BaseHTTPRequestHandler):
                 else:
                     cdata = "WRONG!\n"
                     size = len(cdata)
-                    expireDate=(datetime.now()+timedelta(seconds=5)).strftime(time_format_str)
-                    lastModify=(datetime.now()).strftime(time_format_str)
+                    expireDate=(datetime.now()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                    lastModify=(datetime.now()).strftime("%a, %d %b %Y %H:%M:%S GMT")
                     self.send_response(200)
                     self.send_header('Content-type','text/html')
                     self.send_header('Content-length', str(size))
@@ -75,8 +73,8 @@ class TestHandler(BaseHTTPRequestHandler):
             else:
                 cdata = open("./basic", "r").read()
                 size = len(cdata)
-                expireDate=(datetime.now()+timedelta(seconds=5)).strftime(time_format_str)
-                lastModify=(datetime.now()).strftime(time_format_str)
+                expireDate=(datetime.now()+timedelta(seconds=5)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+                lastModify=(datetime.now()).strftime("%a, %d %b %Y %H:%M:%S GMT")
                 self.send_response(200)
                 self.send_header('Content-type','text/html')
                 self.send_header('Content-length', str(size))
@@ -88,8 +86,7 @@ class TestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             if cdata != "":
                 self.wfile.write(cdata)
-        # else:
-            # print "WRONG!"
+
         return
 
 
@@ -107,43 +104,6 @@ class ServerThread (Thread):
         except KeyboardInterrupt:
             self.server.socket.close() 
 
-class ClientThread (Thread):
-    def __init__(self, proxy, url, file):
-        Thread.__init__(self)
-        self.proxy = proxy
-        self.url = url
-        self.file = file
-        self.result = False
-        self.data = ""
-    def getData(self):
-        return self.data
-
-    def run(self):
-        if self.file:
-            dataFile = open(self.file, "r")
-            cdata = dataFile.read()
-        
-            conn = HTTPConnection(self.proxy)
-            conn.request("GET", self.url)
-            resp = conn.getresponse()
-            rdata = resp.read()
-
-            if rdata == cdata:
-                self.result = True
-            self.data = rdata
-            conn.close()
-            dataFile.close()
-        else:
-            conn = HTTPConnection(self.proxy)
-            conn.request("GET", self.url)
-            resp = conn.getresponse()
-            rdata = resp.read()
-            self.data = rdata
-            
-            if resp.status == httplib.OK:
-                self.result = True
-            conn.close()
-        #print "Response: " , self.data
 
 try:
     conf = open("./portconf", "r")
@@ -156,28 +116,33 @@ try:
     cdata = dataFile.read()
     r = False
     proxy = '127.0.0.1:'+pport
-    client1 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic")
-    client1.start()
-    client1.join()
-    data1 = client1.getData()
-    time.sleep(3)
     
-    client2 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic")
-    client2.start()
-    client2.join()
-    data2 = client2.getData()
+    conn = HTTPConnection(proxy)
+    conn.request("GET", "http://127.0.0.1:" + sport1 + "/basic")
+    resp = conn.getresponse()
+    data = resp.read()
+    conn.close()
+
     time.sleep(3)
-    
-    client3 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic")
-    client3.start()
-    client3.join()
-    data3 = client3.getData()
+    conn2 = HTTPConnection(proxy)
+    conn2.request("GET", "http://127.0.0.1:" + sport1 + "/basic")
+    resp2 = conn2.getresponse()
+    data2 = resp2.read()
+    conn2.close()
+
+    time.sleep(3)
+    conn3 = HTTPConnection(proxy)
+    conn3.request("GET", "http://127.0.0.1:" + sport1 + "/basic")
+    resp3 = conn3.getresponse()
+    data3 = resp3.read()
+    conn3.close()
+
     time.sleep(6)
-    
-    client4 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic")
-    client4.start()
-    data4 = client4.getData()
-    client4.join()
+    conn4 = HTTPConnection(proxy)
+    conn4.request("GET", "http://127.0.0.1:" + sport1 + "/basic")
+    resp4 = conn4.getresponse()
+    data4 = resp4.read()
+    conn4.close()
 
 
     if data4 == "OK" and data3 == cdata and data2 == cdata:
