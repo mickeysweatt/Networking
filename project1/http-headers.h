@@ -37,6 +37,10 @@ public:
   HttpHeaders ();
   
   /**
+  *@brief Destructor
+  */
+  ~HttpHeaders();
+  /**
    * @brief Parse HTTP headers 
    */
   const char*

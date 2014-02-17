@@ -43,6 +43,10 @@ ParseException::ParseException (const std::string &reason) : m_reason (reason)
 HttpHeaders::HttpHeaders ()
 {
 }
+
+HttpHeaders::~HttpHeaders ()
+{
+}
   
 const char*
 HttpHeaders::ParseHeaders (const char *buffer, size_t size)
