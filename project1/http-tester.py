@@ -27,14 +27,14 @@ class bcolors:
 class TestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
-        if self.path == "/basic":
-            cdata = open("./basic", "r").read()
-        if self.path == "/basic2":
-            cdata = open("./basic2", "r").read()
-        if self.path == "/basic3":
-            cdata = open("./basic3", "r").read()
+        if self.path == "/testFiles/basic":
+            cdata = open("./testFiles/basic", "r").read()
+        if self.path == "/testFiles/basic2":
+            cdata = open("./testFiles/basic2", "r").read()
+        if self.path == "/testFiles/basic3":
+            cdata = open("./testFiles/basic3", "r").read()
             time.sleep(3)
-        if self.path == "/cacheTest":
+        if self.path == "/testFiles/cacheTest":
             cdata = str(time.time())
 
         size = len(cdata)
@@ -150,11 +150,11 @@ pport  = conf.readline().rstrip().split(':')[1]
 sport1 = conf.readline().rstrip().split(':')[1]
 sport2 = conf.readline().rstrip().split(':')[1]
 
-b1 = open("./basic", "w")
+b1 = open("./testFiles/basic", "w")
 b1.write("basic\n")
-b2 = open("./basic2", "w")
+b2 = open("./testFiles/basic2", "w")
 b2.write("aloha\n")
-b3 = open("./basic3", "w")
+b3 = open("./testFiles/basic3", "w")
 b3.write("cat\n")
 
 b1.close()
@@ -168,7 +168,7 @@ server1.start()
 server2.start()
 
 
-client1 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic")
+client1 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/testFiles/basic", "./testFiles/basic")
 client1.start()
 client1.join()
 if client1.result:
@@ -176,7 +176,7 @@ if client1.result:
 else: 
     print "Basic object fetching: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]" 
 
-client2 = ClientPersistThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/basic", "./basic", "http://127.0.0.1:" + sport1 + "/basic2", "./basic2")
+client2 = ClientPersistThread("127.0.0.1:" + pport, "http://127.0.0.1:" + sport1 + "/testFiles/basic", "./testFiles/basic", "http://127.0.0.1:" + sport1 + "/testFiles/basic2", "./testFiles/basic2")
 client2.start()
 client2.join()
 if client2.result:
@@ -184,8 +184,8 @@ if client2.result:
 else:
     print "Persistent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 
-client3 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport1 +"/basic3", "./basic3")
-client4 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport2 +"/basic3", "./basic3")
+client3 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport1 +"/testFiles/basic3", "./testFiles/basic3")
+client4 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+ sport2 +"/testFiles/basic3", "./testFiles/basic3")
 
 start = time.time()
 client3.start()
@@ -196,7 +196,7 @@ client4.join()
 end = time.time()
 
 r = False
-datafile = open("./basic3", "r")
+datafile = open("./testFiles/basic3", "r")
 cdata = datafile.read()
 if(end - start) < 4 and client3.data == cdata and client4.data == cdata:
     r = True
@@ -205,11 +205,11 @@ if r:
 else:
     print "Concurrent Connection: [" + bcolors.FAIL + "FAILED" + bcolors.ENDC + "]"
 
-client5 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
+client5 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/testFiles/cacheTest", "./testFiles/basic")
 client5.start()
 client5.join()
 time.sleep(2)
-client6 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/cacheTest", "./basic")
+client6 = ClientThread("127.0.0.1:" + pport, "http://127.0.0.1:"+sport1+"/testFiles/cacheTest", "./testFiles/basic")
 client6.start()
 client6.join()
 r = False
