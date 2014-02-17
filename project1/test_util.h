@@ -42,11 +42,12 @@ static void aSsErT(int c, const char *s, int i) {
 
 #define P(X) std::cout << #X " = " << (X) << std::endl; // Print identifier and value.
 #define Q(X) std::cout << "<| " #X " |>" << std::endl;  // Quote identifier literally.
-#define P_(X) std::cout << #X " = " << (X) << ", " << flush; // P(X) without '\n'
+#define P_(X) std::cout << #X " = " << (X) << ", " << std::flush; // P(X) without '\n'
 #define A(X) std::cout << #X " = " << ((void *) X) << std::endl;  // Print address
 #define A_(X) std::cout << #X " = " << ((void *) X) << ", " << flush;
 #define L_ __LINE__                           // current Line number
 #define TAB std::cout << '\t';
+#define T_ TAB                               // prints a single tab to the screen
 
 
 static std::string get_file_contents(const char *filename)
