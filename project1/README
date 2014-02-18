@@ -35,6 +35,16 @@ cannot get the test driver to run correctly, thus we fail
 'http-test-ConditionalGet-*.py'.
 
 ================================================================================
+                            FEATURES (EC)
+================================================================================
+o Persistent cache (SEE http-cache.cpp)
+o Well designed (we hope)
+o Added support for more request and response types
+o Timeouts
+o Exception safety
+o No warnings (even with extensive flags)
+o Extensively tested (SEE main.cpp AND test-util.h)
+================================================================================
                             General Design
 ================================================================================
 Each component has its own component level documentation, so for more info see
@@ -133,7 +143,11 @@ in cache, it then checks if the cached version is stale, if it is not it parses
 the cache version into an HttpResponse and returns this to the user. If the 
 cached version is stale, the server creates a conditional get from the user's
 request and dispatches the request to the HttpClient (note each server has
-at most one client at a time)
+at most one client at a time), when the response is returned, the status code is
+checked, and if 200, the cache is updated and the new version returned, if 304
+the cached page is returned, otherwise the response is simply returned. If the 
+page is not cached, then the request is forwarded to the HttpClient, and if the
+response status code is 200, the page is cached.
 
 
                     Timeouts

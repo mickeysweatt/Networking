@@ -28,8 +28,7 @@ def configure (env):
                                             '-Wmissing-include-dirs', '-Wredundant-decls', '-Wshadow', '-Wstack-protector', 
                                             '-Wstrict-null-sentinel', '-Wswitch-default', '-Wswitch-enum', '-Winvalid-pch',
                                             '-Wstrict-aliasing=2', '-Wunknown-pragmas', '-Wundef', '-Wlarger-than-len',
-                                            '-Wunsafe-loop-optimizations', '-Wpointer-arith', '-Wcast-qual', 
-                                            '-Wwrite-strings', '-Winline', '-Wvolatile-register-var', '-Wno-unused-parameter',
+                                            , '-Wpointer-arith', '-Wcast-qual', '-Wwrite-strings', '-Winline', '-Wvolatile-register-var', '-Wno-unused-parameter',
                                             '-Wno-variadic-macros'])
     else:
         env.add_supported_cxxflags (cxxflags = ['-I..' , '-O3' '-Wall', 

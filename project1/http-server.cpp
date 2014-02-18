@@ -58,7 +58,7 @@ static int sendResponse(const HttpResponse& response,
     response_str[response_size] = '\0';
     
     // store to cache
-    if (cache_p && reqURL_p && addToCache)
+    if (cache_p && reqURL_p && addToCache && "200" == response.GetStatusCode())
     {
         std::string r(response_str);
         cache_p->cacheFile(*reqURL_p, r);
