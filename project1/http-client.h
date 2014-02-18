@@ -61,5 +61,8 @@ class HttpClient{
       the client has received a response back from the server
     */
     HttpResponse& getResponse();
+	
+	//returns hostname
+	std::string getHostname();
 };
 #endif

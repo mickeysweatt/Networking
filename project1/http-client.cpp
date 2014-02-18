@@ -299,3 +299,8 @@ HttpResponse& HttpClient::getResponse()
 {
     return *m_response;
 }
+
+std::string HttpClient::getHostname()
+{
+	return std::string(m_hostname);
+}
