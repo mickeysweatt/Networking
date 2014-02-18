@@ -22,40 +22,44 @@ class HttpClient{
 
   private:
     //hostname that we want to connect to
-    char* hostname;
+    char* m_hostname;
     
     //port number that we want to connect to
-    char* port;
+    char* m_port;
    
     //holds the response that results from serving the http request
-    HttpResponse *response;
+    HttpResponse *m_response;
    
     //socket that gets open between the server and the client
-    int sockfd;
-
-    //structs that hold the info about the server
-    struct addrinfo hints, *servinfo;
-
+    int m_sockfd;
 
   public:
+    //constructs the client and initializes it
     HttpClient(std::string hostname, unsigned short port = 80);
-      //constructs the client and initializes it
+
+    
+	//destructs the client
     ~HttpClient();
-      //destructs stuff don't know yet ***********
+      
+	  
+    /*
+      initializes the client and creates a connection between
+      the client and the server needed to serve the Httprequest
+    */
     int createConnection();
-      /*
-        initializes the client and creates a connection between
-        the client and the server needed to serve the Httprequest
-      */
+
+
+    /*
+      sends the Httprequest over to the desired server and
+      stores the response
+    */
     int sendRequest(HttpRequest& request);
-      /*
-        sends the Httprequest over to the desired server and
-        stores the response
-      */
+
+	
+    /*
+      returns the response that is stored in the client after
+      the client has received a response back from the server
+    */
     HttpResponse& getResponse();
-      /*
-        returns the response that is stored in the client after
-        the client has received a response back from the server
-      */
 };
 #endif

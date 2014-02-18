@@ -32,6 +32,7 @@ bool veryVeryVerbose = false;
 
 static void test_response();
 static void test_request();
+static void test_client(int testCase = -1);
 
 int main( int argc, const char* argv[] )
 {
@@ -63,6 +64,10 @@ int main( int argc, const char* argv[] )
         if (verbose) std::cout << "TEST REQUEST" << std::endl;
         test_request();
      } break;
+	 case 4 : {
+		if (verbose) std::cout << "TEST CLIENT" << std::endl;
+		test_client();
+	 } break;
      default: {
         std::cerr << "WARNING: CASE `" << test << "' NOT FOUND." << std::endl;
         testStatus = -1;
@@ -169,4 +174,67 @@ static void test_request()
         req.FormatRequest(output);
         ASSERT(0 == strcmp(output, EXP_OUTPUT))
     }
+}
+
+static void test_client(int testCase)
+{
+	bool loop = testCase == -1 ? true : false;
+	int i = testCase == -1 ? 4 : testCase;
+	do 
+	{
+	  switch(i)
+	  {
+		case 4: {	//test case for sending a good request
+			if (verbose) std::cout << "CLIENT TEST 1" << std::endl;
+			HttpRequest req;
+			std::string request = "GET /index.html HTTP/1.1\r\nHost: cs.ucla.edu\r\n\r\n";
+			HttpClient h("cs.ucla.edu", 80);
+			h.createConnection();
+			req.ParseRequest(request.c_str(), request.length());
+			std::cout << "Send Status: " << h.sendRequest(req) << std::endl;
+			std::cout << "Body: " << h.getResponse().GetBody() << std::endl;
+		 } break;
+		 case 5: {	//test case for trying to create a bad connection
+			if (verbose) std::cout << "CLIENT TEST 2" << std::endl;
+			HttpClient h("blah", 80);
+			std::cout << "Connection Status: " << h.createConnection() << std::endl;
+			std::cout << "Response Status Code: " << h.getResponse().GetStatusCode() << std::endl;
+		 } break;
+		 case 6: {	//test case for trying to send a request without initializing connection
+			if (verbose) std::cout << "CLIENT TEST 3" << std::endl;
+			HttpRequest req;
+			HttpClient h("cs.ucla.edu", 80);
+			std::string request = "GET /index.html HTTP/1.1\r\nHost: cs.ucla.edu\r\n\r\n";
+			req.ParseRequest(request.c_str(), request.length());
+			std::cout << "Send Status: " << h.sendRequest(req) << std::endl;
+			std::cout << "Response Status Code: " << h.getResponse().GetStatusCode() << std::endl;
+		 } break;
+		 case 7: {	//test case for testing socket timeout but with good response
+			if (verbose) std::cout << "CLIENT TEST 4" << std::endl;
+			HttpRequest req;
+			std::string request = "GET /index.html HTTP/1.1\r\nHost: www.google.com\r\n\r\n";
+			HttpClient h("www.google.com", 80);
+			h.createConnection();
+			req.ParseRequest(request.c_str(), request.length());
+			std::cout << "Send Status: " << h.sendRequest(req) << std::endl;
+			std::cout << "Response Status Code: " << h.getResponse().GetStatusCode() << std::endl;
+			std::cout << "Body: " << h.getResponse().GetBody() << std::endl;
+		 } break;
+		 case 8: {	//test case for testing socket timeout with bad response
+			if (verbose) std::cout << "CLIENT TEST 4" << std::endl;
+			HttpRequest req;
+			std::string request = "GET /index.html HTTP/1.1\r\nHost: thepiratebay.se\r\n\r\n";
+			HttpClient h("thepiratebay.se", 80);
+			h.createConnection();
+			req.ParseRequest(request.c_str(), request.length());
+			std::cout << "Send Status: " << h.sendRequest(req) << std::endl;
+			std::cout << "Response Status Code: " << h.getResponse().GetStatusCode() << std::endl;
+			std::cout << "Body: " << h.getResponse().GetBody() << std::endl;
+		 } break;
+		 default: {
+			return;
+		 } break;
+	   }
+	 }
+	 while(loop && ++i < 9);
 }
