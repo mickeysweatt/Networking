@@ -58,7 +58,7 @@ static int sendResponse(const HttpResponse& response,
     response_str[response_size] = '\0';
     
     // store to cache
-    if (cache_p && reqURL_p && addToCache)
+    if (cache_p && reqURL_p && addToCache && "200" == response.GetStatusCode())
     {
         std::string r(response_str);
         cache_p->cacheFile(*reqURL_p, r);
@@ -90,6 +90,14 @@ static int requestFromServer(HttpRequest&   req,
     // create an HTTPClient Object
     if (NULL == client)
     {
+        client = new HttpClient(req.GetHost(), req.GetPort());
+        status = client->createConnection();  
+    }
+    
+    // if the request if to a different server
+    else if (client->getHostname() != req.GetHost())
+    {
+        delete client;
         client = new HttpClient(req.GetHost(), req.GetPort());
         status = client->createConnection();  
     }
@@ -325,12 +333,12 @@ int HTTPServer::acceptConnection()
         close(d_sockfd); // child doesn't need the listener
         
         size_t      maxClientsPerServer = MAX_CLIENTS/BACKLOG;  
-                                                            // the maximum 
-                                                            // number of clients
+                                                           // the maximum 
+                                                           // number of clients
                                                            // each server
                                                            // process will start
         
-        HttpRequest req;                                  // a request which we
+        HttpRequest req;                                   // a request which we
                                                            // we get from the 
                                                            // client
         
@@ -358,6 +366,11 @@ int HTTPServer::acceptConnection()
                                                             // this instance of
                                                             // the server has
                                                             // currently running
+        
+        int status = 0;                                     // the status of any
+                                                            // method which may
+                                                            // fail with a 
+                                                            // status code
         
         while (1) 
         {
@@ -418,10 +431,26 @@ int HTTPServer::acceptConnection()
                             req.AddHeader(std::string("If-Modified-Since"), 
                                           lastModifiedDate);
                             
-                            requestFromServer(req, 
-                                             &client,
-                                             &conditionalGetResponse);
-                            
+                            status = requestFromServer(req, 
+                                                      &client,
+                                                      &conditionalGetResponse);
+                            // error in request
+                            if (status < 0)
+                            {
+                                response = response = conditionalGetResponse;
+                                if (-1 == sendResponse(response, 
+                                                       new_fd, 
+                                                       addToCache,
+                                                      &cache,
+                                                      &reqURL))
+
+                                {
+                                    fprintf(stderr, "%s:%d - Could not send\n", 
+                                                                       __FILE__,
+                                                                       __LINE__);
+                                }
+                                exit(status);
+                            }
                             // we get a new page set  the response to this page
                             if ("200" == conditionalGetResponse.GetStatusCode())
                             {
@@ -471,6 +500,11 @@ int HTTPServer::acceptConnection()
                         fprintf(stderr, "%s:%d - Could not send\n", __FILE__,
                                                                   __LINE__);
                     }
+                    // if error from client
+                    if (status < 0)
+                    {
+                        exit(status);
+                    }
                 }
                 // if an exception is passed return a 400 error to the user
                 catch (ParseException e)
@@ -486,7 +520,7 @@ int HTTPServer::acceptConnection()
                         fprintf(stderr, "%s:%d - Could not send\n", __FILE__,
                                                                   __LINE__);
                     }
-                    exit(1);
+                    exit(-1);
                 }
             }
             else 

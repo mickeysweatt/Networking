@@ -1,7 +1,6 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
 
-debug = True
-threading_enabled = True
+debug = False
 
 def options (opt):
     opt.load ('compiler_c compiler_cxx')
@@ -23,17 +22,16 @@ def configure (env):
     env.check_boost(lib='system thread')
 
     if debug:
-        env.add_supported_cxxflags (cxxflags = ['-I..' , '-O3', '-g3', '-Wall', '-Wextra', '-pedantic', '-Wold-style-cast',
+        env.add_supported_cxxflags (cxxflags = ['-I..' , '-O0', '-g3', '-Wall', '-Wextra', '-pedantic', '-Wold-style-cast',
                                             '-Woverloaded-virtual', '-Wctor-dtor-privacy', '-Wconversion',
                                             '-Wfloat-equal','-Wformat=2', '-Winit-self', '-Winline',
                                             '-Wmissing-include-dirs', '-Wredundant-decls', '-Wshadow', '-Wstack-protector', 
                                             '-Wstrict-null-sentinel', '-Wswitch-default', '-Wswitch-enum', '-Winvalid-pch',
                                             '-Wstrict-aliasing=2', '-Wunknown-pragmas', '-Wundef', '-Wlarger-than-len',
-                                            '-Wunsafe-loop-optimizations', '-Wpointer-arith', '-Wcast-qual', 
-                                            '-Wwrite-strings', '-Winline', '-Wvolatile-register-var', '-Wno-unused-parameter',
+                                            , '-Wpointer-arith', '-Wcast-qual', '-Wwrite-strings', '-Winline', '-Wvolatile-register-var', '-Wno-unused-parameter',
                                             '-Wno-variadic-macros'])
     else:
-        env.add_supported_cxxflags (cxxflags = ['-I..', '-Wall', 
+        env.add_supported_cxxflags (cxxflags = ['-I..' , '-O3' '-Wall', 
                                             '-fcolor-diagnostics', '-Wunused-arguments', 
                                             '-Werror'])
 
