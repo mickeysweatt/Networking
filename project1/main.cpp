@@ -251,6 +251,7 @@ static void test_client(int testCase)
 	 }
 	 while(loop && ++i < 9);
 }
+/*
 static void test_cache()
 {
     static const struct {
@@ -274,5 +275,5 @@ static void test_cache()
         const bool        CREATE        = DATA[ti].d_create;
         const bool        DESTROY       = DATA[ti].d_destroy;
     }
-
 }
+*/
