@@ -85,8 +85,8 @@ static void test_response()
             std::string d_expected_output_file;
         } DATA[] = {
             // LINE             // INPUT            //EXP
-            {L_,                "testFiles/200",    "testFiles/200"},
-            {L_,                "testFiles/400",    "testFiles/400"},
+            // {L_,                "testFiles/200",    "testFiles/200"},
+            // {L_,                "testFiles/400",    "testFiles/400"},
             {L_,                "testFiles/304",    "testFiles/304"},
         };
         
@@ -95,11 +95,11 @@ static void test_response()
         for (size_t ti = 0; ti < NUM_DATA; ++ti) {
             const int     LINE            = DATA[ti].d_line;
             const char   *INPUT_FILE      = DATA[ti].d_input_file.c_str();
-            const size_t  LEN_INPUT       = DATA[ti].d_input_file.length();
             const char   *EXP_OUTPUT_FILE = DATA[ti].d_expected_output_file.c_str();
             
             // read in the files
             const std::string INPUT      = get_file_contents(INPUT_FILE);
+            const size_t      LEN_INPUT  = INPUT.length();
             const std::string EXP_OUTPUT = get_file_contents(EXP_OUTPUT_FILE);
             char             *output     = new char[LEN_INPUT];
             HttpResponse rep;
@@ -127,23 +127,23 @@ static void test_request()
         } DATA[] = {
     // Check that inputs are normalized
         // LINE  // INPUT                                       // EXP
-        {L_,     "GET http://google.com/ HTTP/1.1\r\n\r\n",     "GET / HTTP/1.1\r\n"
+        {L_,     "GET http://google.com/ HTTP/1.1\r\n\r\n"    , "GET / HTTP/1.1\r\n"
                                                                 "Host: google.com\r\n\r\n"},
         {L_,     "GET http://www.google.com/ HTTP/1.1\r\n\r\n", "GET / HTTP/1.1\r\n"
                                                                 "Host: google.com\r\n\r\n"},
-        {L_,     "GET www.google.com/ HTTP/1.1\r\n\r\n",        "GET / HTTP/1.1\r\n"
+        {L_,     "GET www.google.com/ HTTP/1.1\r\n\r\n"       , "GET / HTTP/1.1\r\n"
                                                                 "Host: google.com\r\n\r\n"},
-        {L_,     "GET google.com/ HTTP/1.1\r\n\r\n",            "GET / HTTP/1.1\r\n"
+        {L_,     "GET google.com/ HTTP/1.1\r\n\r\n"           , "GET / HTTP/1.1\r\n"
                                                                 "Host: google.com\r\n\r\n"},
     // Check a HEAD Request
         // LINE  // INPUT                                       // EXP
-        {L_,     "HEAD http://google.com/ HTTP/1.1\r\n\r\n",    "HEAD / HTTP/1.1\r\n"
+        {L_,     "HEAD http://google.com/ HTTP/1.1\r\n\r\n"   , "HEAD / HTTP/1.1\r\n"
                                                                 "Host: google.com\r\n\r\n"},
                                                                
     // Check a request with a PATH
          {L_,    "GET http://cs.ucla.edu" 
                  "/classes/fall13/cs111/news.html " 
-                 "HTTP/1.1\r\n\r\n",    
+                 "HTTP/1.1\r\n\r\n"                           ,    
                                                                 "GET /classes/fall13/cs111/news.html HTTP/1.1\r\n"
                                                                 "Host: cs.ucla.edu\r\n\r\n"},
     // Check a request with more headers
@@ -166,6 +166,7 @@ static void test_request()
         const char   *INPUT      = DATA[ti].d_input.c_str();
         const size_t  LEN_INPUT  = DATA[ti].d_input.length();
         const char   *EXP_OUTPUT = DATA[ti].d_expected_output.c_str();
+        
         char         *output     = new char[LEN_INPUT];
         
         if (veryVeryVerbose) { T_ P(LINE) };
@@ -249,4 +250,29 @@ static void test_client(int testCase)
 	   }
 	 }
 	 while(loop && ++i < 9);
+}
+static void test_cache()
+{
+    static const struct {
+            int         d_line;
+            std::string d_file_name;
+            std::string d_file_contents;
+            bool        d_create;
+            bool        d_destroy;
+        } DATA[] = {
+    // LINE     // FILE_NAME  // FILE_CONT      // CREAT        // DESTROY
+    // Check that 
+        {L_,        "test" ,  "test 1"   ,      true   ,       false      },
+        {L_,        "test" ,  "test 1"   ,      false   ,      true      },
+    };
+    const size_t NUM_DATA = sizeof (DATA) / sizeof (*DATA);
+        
+    for (size_t ti = 0; ti < NUM_DATA; ++ti) {
+        const int         LINE          = DATA[ti].d_line;
+        const std::string FILE_NAME     = DATA[ti].d_file_name;
+        const std::string FILE_CONTENTS = DATA[ti].d_file_contents;
+        const bool        CREATE        = DATA[ti].d_create;
+        const bool        DESTROY       = DATA[ti].d_destroy;
+    }
+
 }
