@@ -1,0 +1,254 @@
+================================================================================
+                            BUILD
+================================================================================
+This project is compilable from the waf script. Note that an important addition
+that was made to the build line is the -I.. flag, which specifies to search in
+the working directory (since the waf script builds in a subdir of the working 
+directory) for headers, this is done to allow the compiler to do more rigorous
+testing of the header files.
+
+STEPS:
+// If you want the extensive flags we used, set debugg to true in the waf script
+CXX=/usr/bin/g++ ./waf configure
+./waf clean
+./waf
+
+================================================================================
+                            TEST
+================================================================================
+We redesigned the ./http-tester.py to use a subdirectory to store all of its 
+files, both for the sake of allowing us to implement our own test cases 
+(included in main)
+
+We also designed a number of test cases for each component, again included in 
+the main. If you want to run any test case that is not the default (0), running
+the proxy server, you specify the test case number as a command line argument.
+
+If logging is desired, specify the test case number, and a verbosity level 
+( int in range (1,3) )
+Verbosity level : 1 - outputs basic status
+Verbosity level : 2 - outputs basic status AND requests and responses
+Verbosity level : 3 - outputs basic status AND requests and responses AND where
+                      a response comes from (cache, 304, etc)
+
+Because we use a persistent cache, the cache must be explicitly cleared between
+tests (if desired). If no folder is specified for the cache, the default is
+$PWD/cache.
+
+To the best of our knowledge upon submission our server passes all tests in the
+'http-test.py', and we believe we correctly implement conditional GETs, but
+cannot get the test driver to run correctly, thus we fail 
+'http-test-ConditionalGet-*.py'.
+
+================================================================================
+                            FEATURES (EC)
+================================================================================
+o Persistent cache (SEE http-cache.cpp)
+o Well designed (we hope)
+o Added support for more request and response types
+o Timeouts
+o Exception safety
+o No warnings (even with extensive flags)
+o Extensively tested (SEE main.cpp AND test-util.h)
+================================================================================
+                            General Design
+================================================================================
+Each component has its own component level documentation, so for more info see
+each.
+                            Dependencies
+                            ------------
+The hierarchy of dependencies is as follows:
+
+KEY:
+o A direction of the arrow shows a dependency. So a --> b, 
+  implies that A depends on B.
+o An arrow with a V for a tip means that the parent HAS A instance of the child
+  that it uses to implement its functionality
+o An arrow with a * for a tip means that the parent IS A subclass of the child
+
+
+          - - - - - - - - HttpServer
+         /              /           \
+        /              /             \
+       /              V               \
+      /       -  - - HttpClient        \
+     /      /       /      \            \
+    /      /       /        \            \
+    V     V        V         V            \
+   HttpUtil     HttpRequest   HttpResponse \
+         \       \           /              \
+          \       \         /                \
+           \       *       *                  V
+            \     HttpHeaders              HttpCache
+             \           \                   /
+              \           \                 /
+               \          V                V
+                 - - >  Standard Library Code
+                         
+                    Parsing Http Objects
+                    --------------------
+There exists a series of classes used to parse, validate, and encapsulate the
+elements of HTTP objects (HTTP Requests and Responses). HttpHeaders encapsulates
+the key value pairs for the headers in any HTTP Object. HTTP Request and HTTP
+Response use this functionality to implement their specialization of the 
+different types of HttpResponse.
+                    
+We were given a skeleton for the HttpRequest, HttpResponse, and HttpHeaders.
+The HttpHeaders has remains mostly unchanged, except for a bug fix to remove
+duplicate headers.
+                    
+However significant functionality has been added to the HttpResponse and 
+ttpRequest classes in order to make them more robust, and to increased their
+functionality to simplify the process of creating, manipulating, and retrieving
+Http objects.
+
+HttpRequest
+- - - - - -                        
+The HttpRequest now supports the feature of normalizing hostnames, this assists
+with caching so that aliases for the some file are returned to be equivalent.
+Thus each of the following:
+    "http://www.foo.com"
+    "http://foo.com"
+    "www.foo.com"
+    "foo.com"
+
+Are all stored as the same hostname.
+
+Also more support was added for specifying a port that was not 80.
+
+We also added support for HEAD Requests, as a means of supporting caching 
+without requiring origin servers to support conditional GET, which many do not,
+however since the test driver does not support the HEAD request, we do not have 
+any examples.
+
+The request also supports the return of a requestURL, which we use to create
+the file name for the version that is in cache.
+
+HttpRespose
+- - - - - -
+The HttpResponse now has a body field, which holds the body of the response 
+message. Due to the fact that each status code has a corresponding status text,
+we redesigned the HttpResponse to set the status text whenever the status code
+was set. We also added input validation throughout, since there are many cases
+in which the input to a function is a string which represents a field with 
+strict constraints on what is a semantically correct value, example a port
+number must be a number.
+                    
+                    Serving a Request
+                    -----------------
+NOTE: To disambiguate the client (meaning a user requesting content from the
+      proxy, from the client which the proxy calls to contact the origin server,
+      we will use "user" for the first and "HttpClient" for the later.
+      
+The HttpServer starts by listening on port 14886 for incoming requests. When a
+request is received from the user, the server: accepts the connection, forks a 
+child process to serve the request. This child process then handles all further
+communication with the user. The client recv's the request from the user, parses
+it into a HttpRequest object. It then checks if the file is in cache. If it is
+in cache, it then checks if the cached version is stale, if it is not it parses
+the cache version into an HttpResponse and returns this to the user. If the 
+cached version is stale, the server creates a conditional get from the user's
+request and dispatches the request to the HttpClient (note each server has
+at most one client at a time), when the response is returned, the status code is
+checked, and if 200, the cache is updated and the new version returned, if 304
+the cached page is returned, otherwise the response is simply returned. If the 
+page is not cached, then the request is forwarded to the HttpClient, and if the
+response status code is 200, the page is cached.
+
+
+                    Timeouts
+                    --------
+Client connection to origin server:
+    SEND: 125.0 s
+    RECV: 125.0 s
+
+Server connection to client:
+    SEND: 120 s
+    RECV: 120 s
+
+Serving listening socket:
+    NEVER TIMES OUT.
+    
+================================================================================
+                            In-Depth Explanation
+================================================================================    
+To make our code well-organized and modular, we decided to create an HTTPClient
+class that was separate from the actual proxy server.  We made this design
+decision because we wanted the actual fetching of HTTP responses to be handled 
+by a client.  By abstracting this feature out into its own class, we were able 
+to keep our server code cleaner and more understandable.  In addition to 
+organizing our code, the abstraction allowed us to test separate parts of our 
+entire HTTP proxy, making debugging easier.  By being able to test the HTTP 
+client by itself without proxy dependencies, we were able to catch bugs such as 
+recv infinitely hanging.
+
+The HTTP client has member variables for the port(m_port), hostname(m_hostname),
+socket(m_socket), and response(m_response).  The port and hostname need to be 
+member variables because these two pieces of information are essential for 
+creating a connection with the remote server.  By passing in a hostname and port
+number from the proxy, the HTTP client is able to operate independently from the
+proxy server.  In order to maintain the socket created by initializing the 
+connection, we also kept the member variable m_socket inside the client.  By 
+maintaining the socket, we were able to create a persistent connection between 
+the client and the remote server.  Because the client is ultimately responsible
+for retrieving the HTTP response, we created a member variable called m_response
+to permanently store the server’s response.  By storing the response, we were
+able to utilize the HTTP response object to quickly parse parts of the server's
+response and obtain key information like content length and status code. 
+
+For the constructor of the HTTP client class, we passed in the port number and 
+hostname of the GET request received by our proxy server.  Both needed to be 
+formatted into c-strings because key functions like getaddrinfo required 
+c-strings for their parameters.  In addition, we initialized both the m_socket 
+and m_response to -1 and NULL respectively in order to represent that these 
+variables were not yet initialized.  We set these variables to prevent us from
+executing functions that would not work without correct initialization. 
+
+To initialize the connection between the client and the remote server, we 
+created a function called createConnection().  Because createConnection utilizes
+the member variables in the constructor, we needed no other parameters. To 
+create a reliable connection between the client and the remote server, we 
+specified a TCP connection in the addrinfo structure.  We also specified in the
+addrinfo structure that we could handle both IPv4 and IPv6.  After setting the
+specifications of the connection, we called getaddrinfo to obtain information on
+the server.  By using this function, the server creates a linked list of 
+addrinfo structures about the server that our client uses.  Due to the multiple
+structures that identify the server, we needed to iterate through the linked 
+list to find a valid entry in which we could successfully create a socket.  If 
+we failed to create a connection after iterating through the linked list, we 
+decided to return a 404 HTTP response object and a status of -1.  On success, we
+set a socket timeout on both sending and receiving in order to deal with 
+possible problems when we actually started to send HTTP requests and receive 
+HTTP responses.
+
+The second key function that we created sends the actual HTTP request to the 
+remote server.  Because the HTTP client is responsible for the communication to
+the remote server, we decided to have the client handle bad sockets.  In the 
+very beginning of the function, we made sure to check that we had a valid 
+m_sockfd before moving on and sending a request.  At this point the client has 
+no idea which request item's going to serve so we decided to have the server 
+pass in an HTTP request object in order to easily manipulate header fields. Once
+we correctly formatted the request and stored it in a local buffer, we sent the
+request to the server through the socket initialized from createConnection.  In
+the case of a bad send request to the remote server, we would return a 404
+response to the proxy to indicate an error.  After successfully sending the 
+request, our client would loop and use to recv function call to retrieve the
+HTTP response.  As we continued to receive content, we stored the partial 
+responses in a string in order to form the whole response in one variable. One 
+problem that we ran into was that some servers did not return 0 in the recv 
+function call.  Because 0 indicates that the server is done transmitting data to
+the client, our client was unable to decide when to actually exit our loop.  
+In order to solve this problem, we had to look for the contentLength field in 
+the HTTP header response to know exactly when the server was done sending data.  
+By counting the total number of bytes received and using the contentLength field 
+from the header, we were able to use arithmetic to signal that the server was 
+done.  After receiving the entire response, the client would create an 
+HTTPresponse object and store the resulting data for our proxy to manipulate.  
+At every stage of the recv, we would check for errors and return a 404 response 
+to the proxy server.   Along with the 404, the proxy server will close the 
+client and remote server communication, thus destroying persistent connections.
+We decided to separate these two core functions because they essentially 
+achieved two different goals.  Because the proxy is ultimately using the client 
+to fetch responses, we wanted to create these 2 functions to make our code more 
+understandable.  Again, by separating them, debugging and testing each 
+functionality was easier. 

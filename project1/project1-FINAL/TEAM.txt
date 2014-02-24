@@ -1,0 +1,23 @@
+TEAM MEMBERS
+=================================
+NAME:  Mickey Sweatt
+SN:    604216994
+EMAIL: mickeysweatt@engineering.ucla.edu
+
+NAME:  Rohan Chitalia
+SN:    804032423
+EMAIL: rohan.chitalia@gmail.com
+
+NAME:  Matt Nguyen
+SN:    804037897
+EMAIL: mattnguyen81@yahoo.com
+
+
+CONTRIBUTIONS
+=================================
+
+Mickey Sweatt: HTTP proxy server, HTTP proxy server test cases, README
+Rohan Chitalia: HTTP cache
+Matt Nguyen: HTTP client/handler, HTTP client/handler test cases, README
+
+
