@@ -85,8 +85,8 @@ static void test_response()
             std::string d_expected_output_file;
         } DATA[] = {
             // LINE             // INPUT            //EXP
-            // {L_,                "testFiles/200",    "testFiles/200"},
-            // {L_,                "testFiles/400",    "testFiles/400"},
+            {L_,                "testFiles/200",    "testFiles/200"},
+            {L_,                "testFiles/400",    "testFiles/400"},
             {L_,                "testFiles/304",    "testFiles/304"},
         };
         
