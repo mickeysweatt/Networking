@@ -152,13 +152,15 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
 
   uint16_t ethtype = ethertype(buf);
   print_hdr_eth(buf);
-
-  if (ethtype == ethertype_ip) { /* IP */
-    minlength += sizeof(sr_ip_hdr_t);
-    if (length < minlength) {
-      fprintf(stderr, "Failed to print IP header, insufficient length\n");
-      return;
-    }
+  
+  if (ethtype == ethertype_ip) 
+  { 
+      minlength += sizeof(sr_ip_hdr_t);
+      if (length < minlength) 
+      {
+          fprintf(stderr, "Failed to print IP header, insufficient length\n");
+          return;
+      }
 
     print_hdr_ip(buf + sizeof(sr_ethernet_hdr_t));
     uint8_t ip_proto = ip_protocol(buf + sizeof(sr_ethernet_hdr_t));
@@ -170,7 +172,8 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
       else
         print_hdr_icmp(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
     }
-  }
+  } // end IP
+ 
   else if (ethtype == ethertype_arp) { /* ARP */
     minlength += sizeof(sr_arp_hdr_t);
     if (length < minlength)

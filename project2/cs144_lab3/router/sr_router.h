@@ -42,15 +42,20 @@ struct sr_rt;
 
 struct sr_instance
 {
+    // stuff for Virtualization
     int  sockfd;   /* socket to server */
     char user[32]; /* user name */
     char host[32]; /* host name */ 
     char template[30]; /* template name if any */
     unsigned short topo_id;
     struct sockaddr_in sr_addr; /* address to server */
-    struct sr_if* if_list; /* list of interfaces */
-    struct sr_rt* routing_table; /* routing table */
-    struct sr_arpcache cache;   /* ARP cache */
+    
+    // stuff we care about
+    struct sr_if        *if_list;       /* list of interfaces */
+    struct sr_rt        *routing_table; /* routing table */
+    struct sr_arpcache   cache;         /* ARP cache */
+    
+    // for threading / DEBUGGING
     pthread_attr_t attr;
     FILE* logfile;
 };
