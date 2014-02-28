@@ -1,5 +1,6 @@
 #include <netinet/in.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
@@ -16,29 +17,43 @@
   checking whether we should resend an request or destroy the arp request.
   See the comments in the header file for an idea of what it should look like.
 */
+
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
+
 void sr_arpcache_sweepreqs(struct sr_instance *sr) 
 { 
-    
+    struct sr_arpreq *curr_req  = sr->cache.requests, *next_req = NULL;
+    while (curr_req)
+    {
+        next_req = curr_req->next;
+        handle_arpreq(sr, curr_req);
+        curr_req = next_req;
+    }
 }
+/*
+    This initializes a raw arp request with the target ip address of the 
+*/
+
 
 static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_arpreq *req)
 {
-    sr_arp_hdr_t* hdr = NULL;
+    assert(req);
+    sr_arp_hdr_t* hdr = malloc(sizeof(sr_arp_hdr_t));
     memset(req, 0, sizeof(sr_arp_hdr_t));
     // because all packets are attempting reach the same interface
-    struct sr_if* src_if = sr_get_interface(req->packets->iface);
+    struct sr_if *src_if = (struct sr_if *)sr_get_interface(req->packets->iface);
     // Ethernet is 1
-    hdr->ar_hrd = 1;
-    //unsigned short  ar_pro;             /* format of protocol address   */
+    hdr->ar_hrd = arp_hrd_ethernet;
+    hdr->ar_pro = ip_protocol_ipv4;           /* format of protocol address   */
     // Ethernet is 6 bytes
-    hdr->ar_hln = 6;             /* length of hardware address   6*/
+    hdr->ar_hln = ETHER_ADDR_LEN;            /* length of hardware address   6*/
     // IPv4 is 4 bytes
-    hdr->ar_pln = 6;           /* length of protocol address   4*/
+    hdr->ar_pln = 4;                         /* length of protocol address   4*/
     // 1 for request 2 for response
-    hdr->ar_op  = 1;              /* ARP opcode (command)         1*/
-    //memcpy(req->ar_sha, src_if->addr, ETHER_ADDR_LEN);
-    //uint32_t        ar_sip;             /* sender IP address            */
-    hdr->ar_tip = req->ip;
+    hdr->ar_op  = arp_op_request;           /* ARP opcode (command)         1*/
+    memcpy(hdr->ar_sha, src_if->addr, ETHER_ADDR_LEN);
+    hdr->ar_sip = src_if->ip;                 /* sender IP address            */
+    hdr->ar_tip = req->ip;                  
 }
 
 
@@ -72,7 +87,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
        else
        {
            // make arp request
-           //send arp request;
+           // send arp request;
           
            req->sent = now;
            req->times_sent++;

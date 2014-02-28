@@ -176,3 +176,17 @@ void sr_print_routing_entry(struct sr_rt* entry)
     printf("%s\n",entry->interface);
 
 } /* -- sr_print_routing_entry -- */
+
+struct sr_rt *sr_find_rt_entry(struct sr_rt* head, int32_t ip)
+{
+    struct sr_rt *curr = head;
+    while (curr)
+    {
+        if (ip == curr->dest.s_addr)
+        {
+            break;
+        }
+        curr = curr->next;
+    }
+    return curr;
+}

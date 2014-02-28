@@ -144,10 +144,9 @@ struct sr_ethernet_hdr
 } __attribute__ ((packed)) ;
 typedef struct sr_ethernet_hdr sr_ethernet_hdr_t;
 
-
-
 enum sr_ip_protocol {
   ip_protocol_icmp = 0x0001,
+  ip_protocol_ipv4 = 0x0004,
 };
 
 enum sr_ethertype {
