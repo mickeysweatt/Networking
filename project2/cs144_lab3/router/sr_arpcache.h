@@ -73,6 +73,8 @@
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0
 
+struct sr_instance;
+
 struct sr_packet {
     uint8_t *buf;               /* A raw Ethernet frame, presumably with the dest MAC empty */
     unsigned int len;           /* Length of raw Ethernet frame */
@@ -117,10 +119,10 @@ struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, uint32_t ip);
    A pointer to the ARP request is returned; it should be freed. The caller
    can remove the ARP request from the queue by calling sr_arpreq_destroy. */
 struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
-                         uint32_t ip,
-                         uint8_t *packet,               /* borrowed */
-                         unsigned int packet_len,
-                         char *iface);
+                                       uint32_t            ip,
+                                       uint8_t            *packet,
+                                       unsigned int        packet_len,
+                                       char               *iface);
 
 /* This method performs two functions:
    1) Looks up this IP in the request queue. If it is found, returns a pointer
@@ -145,5 +147,5 @@ void sr_arpcache_dump(struct sr_arpcache *cache);
 int   sr_arpcache_init(struct sr_arpcache *cache);
 int   sr_arpcache_destroy(struct sr_arpcache *cache);
 void *sr_arpcache_timeout(void *cache_ptr);
-
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 #endif

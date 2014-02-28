@@ -12,7 +12,7 @@
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <limits.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -91,7 +91,7 @@ int sr_load_rt(struct sr_instance* sr,const char* filename)
  *---------------------------------------------------------------------*/
 
 void sr_add_rt_entry(struct sr_instance* sr, struct in_addr dest,
-struct in_addr gw, struct in_addr mask,char* if_name)
+                     struct in_addr gw, struct in_addr mask,char* if_name)
 {
     struct sr_rt* rt_walker = 0;
 
@@ -176,17 +176,39 @@ void sr_print_routing_entry(struct sr_rt* entry)
     printf("%s\n",entry->interface);
 
 } /* -- sr_print_routing_entry -- */
+ssize_t prefix_match(int32_t ip_lhs, int32_t ip_rhs);
 
 struct sr_rt *sr_find_rt_entry(struct sr_rt* head, int32_t ip)
 {
-    struct sr_rt *curr = head;
+    struct sr_rt *curr = head, *rval = NULL;
+    
+    ssize_t longestMatch = 0;
+    ssize_t currMatch    = 0;
     while (curr)
     {
-        if (ip == curr->dest.s_addr)
+        currMatch = prefix_match(ip, curr->dest.s_addr);
+        if (currMatch > longestMatch)
         {
-            break;
+            longestMatch = currMatch;
+            rval = curr;
         }
         curr = curr->next;
     }
-    return curr;
+    return rval;
+}
+
+ssize_t prefix_match(int32_t ip_lhs, int32_t ip_rhs)
+{
+    // comparison for prefix match is done in host byte order
+    ip_lhs = ntohl(ip_lhs);
+    ip_rhs = ntohl(ip_rhs);
+    const int MAX_MATCH = sizeof(int) * CHAR_BIT;
+    int mask = 0x1 << (MAX_MATCH  - 1);
+    ssize_t count = 0;
+    while (((mask & ip_lhs) == (mask & ip_rhs) )&& count < MAX_MATCH)
+    {
+        mask >>=1;
+        count++;
+    }
+    return count ? count : -1;
 }
