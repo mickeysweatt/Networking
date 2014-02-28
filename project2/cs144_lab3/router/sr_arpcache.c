@@ -41,6 +41,23 @@ static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_arpreq *req)
     hdr->ar_tip = req->ip;
 }
 
+
+
+
+sr_icmp_t3_hdr_t* makeICMP(struct sr_instance *sr, struct sr_arpreq *req)
+{
+   
+   sr_icmp_t3_hdr_t *s = malloc(sizeof(sr_icmp_t3_hdr_t));
+   memset(s, 0, sizeof(sr_icmp_t3_hdr_t));
+   s->icmp_type = 3; //set the type
+   s->icmp_code = 1; //set the code to be Host Unreachable
+   uint8_t *topOfIp = req->packets->buf + sizeof(sr_ethernet_hdr_t);
+   memcpy(s->data, topOfIp, ICMP_DATA_SIZE);
+   s->icmp_sum = cksum((void *)s->data, ICMP_DATA_SIZE);
+   sr_ip_hdr_t *ip = malloc(sizeof(sr_ip_hdr_t));
+   memset(ip, 0, sizeof(sr_ip_hdr_t));   
+}
+
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 {
    time_t now = time(NULL);
