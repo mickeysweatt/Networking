@@ -17,6 +17,7 @@
   checking whether we should resend an request or destroy the arp request.
   See the comments in the header file for an idea of what it should look like.
 */
+uint16_t cksum(const void *_data, int len);
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
@@ -57,11 +58,37 @@ static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_arpreq *req)
 }
 
 
-
-
-sr_icmp_t3_hdr_t* makeICMP(struct sr_instance *sr, struct sr_arpreq *req)
+sr_ip_hdr_t* makeIP_hdr(struct sr_instance *sr, struct sr_arpreq *req)
 {
-   
+   sr_ip_hdr_t *ip = malloc(sizeof(sr_ip_hdr_t));
+   memset(ip, 0, sizeof(sr_ip_hdr_t));
+   ip->ip_p = ip_protocol_icmp;
+   ip->ip_v = ip_protocol_ipv4;
+   ip->ip_tos = 1;
+   ip->ip_len = sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+   ip->ip_id = 0;
+   ip->ip_off = 0;
+   ip->ip_ttl = INIT_TTL;
+   ip->ip_sum = cksum((void *)ip, sizeof(sr_ip_hdr_t));
+   sr_ip_hdr_t *topOfIp = (sr_ip_hdr_t *) (req->packets->buf + sizeof(sr_ethernet_hdr_t));  
+   ip->ip_src = topOfIp->ip_dst;
+   ip->ip_dst = topOfIp->ip_src;
+   return ip;    
+}
+
+sr_ethernet_hdr_t* makeEthr_hdr(struct sr_instance *sr, struct sr_arpreq *req)
+{
+   sr_ethernet_hdr_t* et = malloc(sizeof(sr_ethernet_hdr_t));
+   memset(et, 0, sizeof(sr_ethernet_hdr_t));
+   sr_ethernet_hdr_t* topOfEthr = (sr_ethernet_hdr_t*) (req->packets->buf);
+   memcpy(&(et->ether_shost), &(topOfEthr->ether_dhost), ETHER_ADDR_LEN);
+   memcpy(&(et->ether_dhost), &(topOfEthr->ether_shost), ETHER_ADDR_LEN); 
+   et->ether_type = ethertype_ip;
+   return et;
+}
+
+sr_icmp_t3_hdr_t* makeICMP_hdr(struct sr_instance *sr, struct sr_arpreq *req)
+{
    sr_icmp_t3_hdr_t *s = malloc(sizeof(sr_icmp_t3_hdr_t));
    memset(s, 0, sizeof(sr_icmp_t3_hdr_t));
    s->icmp_type = 3; //set the type
@@ -69,9 +96,19 @@ sr_icmp_t3_hdr_t* makeICMP(struct sr_instance *sr, struct sr_arpreq *req)
    uint8_t *topOfIp = req->packets->buf + sizeof(sr_ethernet_hdr_t);
    memcpy(s->data, topOfIp, ICMP_DATA_SIZE);
    s->icmp_sum = cksum((void *)s->data, ICMP_DATA_SIZE);
-   sr_ip_hdr_t *ip = malloc(sizeof(sr_ip_hdr_t));
-   memset(ip, 0, sizeof(sr_ip_hdr_t));   
+   return s;
 }
+
+sr_icmp_response_t* makeICMP_response(struct sr_instance *sr, struct sr_arpreq *req)
+{
+   sr_icmp_response_t* resp = malloc(sizeof(sr_icmp_response_t));
+   memset(resp, 0, sizeof(sr_icmp_response_t));
+   resp->eth = makeEthr_hdr(sr, req);
+   resp->ip = makeIP_hdr(sr, req);
+   resp->s = makeICMP_hdr(sr, req);
+   return resp;
+}
+
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 {
@@ -80,6 +117,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
    {
        if (req->times_sent >= 5)
        {
+            sr_icmp_response_t* resp = makeICMP_response(sr, req);
            // send icmp host unreachable to source addr of all
            // pkts waiting on this request
            sr_arpreq_destroy(&(sr->cache), req);

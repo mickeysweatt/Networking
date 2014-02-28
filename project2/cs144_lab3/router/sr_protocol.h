@@ -129,6 +129,8 @@ struct sr_ip_hdr
   } __attribute__ ((packed)) ;
 typedef struct sr_ip_hdr sr_ip_hdr_t;
 
+
+
 /* 
  *  Ethernet packet header prototype.  Too many O/S's define this differently.
  *  Easy enough to solve that and define it here.
@@ -143,6 +145,15 @@ struct sr_ethernet_hdr
     uint16_t ether_type;                     /* packet type ID */
 } __attribute__ ((packed)) ;
 typedef struct sr_ethernet_hdr sr_ethernet_hdr_t;
+
+struct sr_icmp_response
+{
+   sr_ethernet_hdr_t* eth;
+   sr_ip_hdr_t* ip;             /* IP header */
+   sr_icmp_t3_hdr_t* s;         /* ICMP header */
+} __attribute__ ((packed)) ;
+typedef struct sr_icmp_response sr_icmp_response_t;
+
 
 enum sr_ip_protocol {
   ip_protocol_icmp = 0x0001,
