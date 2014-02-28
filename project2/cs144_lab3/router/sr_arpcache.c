@@ -21,8 +21,24 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr)
     
 }
 
-static sr_arp_hdr_t* sr_arp_hdr_init(struct sr_arpreq *req)
+static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_arpreq *req)
 {
+    sr_arp_hdr_t* hdr = NULL;
+    memset(req, 0, sizeof(sr_arp_hdr_t));
+    // because all packets are attempting reach the same interface
+    struct sr_if* src_if = sr_get_interface(req->packets->iface);
+    // Ethernet is 1
+    hdr->ar_hrd = 1;
+    //unsigned short  ar_pro;             /* format of protocol address   */
+    // Ethernet is 6 bytes
+    hdr->ar_hln = 6;             /* length of hardware address   6*/
+    // IPv4 is 4 bytes
+    hdr->ar_pln = 6;           /* length of protocol address   4*/
+    // 1 for request 2 for response
+    hdr->ar_op  = 1;              /* ARP opcode (command)         1*/
+    //memcpy(req->ar_sha, src_if->addr, ETHER_ADDR_LEN);
+    //uint32_t        ar_sip;             /* sender IP address            */
+    hdr->ar_tip = req->ip;
 }
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
