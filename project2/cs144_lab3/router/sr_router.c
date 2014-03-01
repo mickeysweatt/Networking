@@ -58,9 +58,45 @@ void sr_init(struct sr_instance* sr)
 } /* -- sr_init -- */
 
 /*---------------------------------------------------------------------
- * Method: sr_find_entry
+ * Method: sr_send_IP
  *--------------------------------------------------------------------*/
-
+ int sr_send_IP(struct sr_instance *sr, 
+                       sr_ip_hdr_t *ip_hdr_p)
+ {
+ 		// handle TTL
+		if(ip_hdr_p->ip_ttl == 0 || (--(ip_hdr_p->ip_ttl) == 0))
+		{
+			// send ICMP Time exceeded
+		}
+		
+		struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
+		                                ip_hdr_p->ip_dst);
+		if(rt_entry == NULL)
+		{
+			// send ICMP network unreachable
+		}
+		
+		struct sr_if* if_entry = sr_get_interface(sr, 
+												  rt_entry->interface);
+		// if there is no entry for the interface that packet specifies
+		if(if_entry == NULL)
+		{
+			return -1;
+		}
+		
+		//find arp entry for the ip_dst
+		struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, 
+														   ip_hdr_p->ip_dst);												   
+		if(arp_entry == NULL)
+		{
+			//send ARP request
+		}
+		
+		//change up IP header
+		//send
+		
+		return 0;
+ }
 
 /*---------------------------------------------------------------------
  * Method: sr_handle_IP
@@ -68,9 +104,9 @@ void sr_init(struct sr_instance* sr)
  *--------------------------------------------------------------------*/
 
  int sr_handle_IP(struct sr_instance *sr,
-                   uint8_t            *packet/* lent */,
-                   unsigned int        len,
-                   char               *interface/* lent */)
+                   uint8_t           *packet/* lent */,
+                   unsigned int       len,
+                   char              *interface/* lent */)
 {
 	int min_length        = 0;
 	sr_ip_hdr_t* ip_hdr_p = NULL;
@@ -103,19 +139,11 @@ void sr_init(struct sr_instance* sr)
 	// this IP packet is destined for somewhere else
 	else
 	{
-		//handle TTL
-		if(ip_hdr_p->ip_ttl == 0 || (--ip_hdr_p) == 0)
-		{
-			//send ICMP Time exceeded
-		}
-		
-		
-		
-		
-		
+		//FIXME
+		return -1;
 	}
 
-	
+	/*
 	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
 	
 	// check protocol field in IP header
@@ -129,6 +157,9 @@ void sr_init(struct sr_instance* sr)
 			return;
 		}
 	}
+	*/
+	//FIXME
+	return -1;
 }
                    
  
