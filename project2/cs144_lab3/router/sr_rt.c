@@ -199,6 +199,7 @@ struct sr_rt *sr_find_rt_entry(struct sr_rt* head, int32_t ip)
 
 ssize_t prefix_match(int32_t ip_lhs, int32_t ip_rhs)
 {
+    // comparison for prefix match is done in host byte order
     ip_lhs = ntohl(ip_lhs);
     ip_rhs = ntohl(ip_rhs);
     const int MAX_MATCH = sizeof(int) * CHAR_BIT;
