@@ -58,6 +58,82 @@ void sr_init(struct sr_instance* sr)
 } /* -- sr_init -- */
 
 /*---------------------------------------------------------------------
+ * Method: sr_find_entry
+ *--------------------------------------------------------------------*/
+
+
+/*---------------------------------------------------------------------
+ * Method: sr_handle_IP
+ * returns 0 or -1 depending on whether its a success or failure
+ *--------------------------------------------------------------------*/
+
+ int sr_handle_IP(struct sr_instance *sr,
+                   uint8_t            *packet/* lent */,
+                   unsigned int        len,
+                   char               *interface/* lent */)
+{
+	int min_length        = 0;
+	sr_ip_hdr_t* ip_hdr_p = NULL;
+	ip_hdr_p              = malloc(sizeof(sr_ip_hdr_t));
+    
+	// copies IP header into pointer
+	memcpy(ip_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_ip_hdr_t));
+	
+
+	// check if checksum is correct for packet
+	uint16_t expected_cksum         = ip_hdr_p->ip_sum;
+	ip_hdr_p->ip_sum                = 0;
+	uint16_t calculated_cksum       = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
+	
+	if(expected_cksum != calculated_cksum)
+	{
+		fprintf(stderr, "Checksum error in packet");
+		return -1;
+	}
+	
+	//converts string IP to int IP
+	struct in_addr sa;
+	inet_aton("171.67.238.32", &sa);
+	
+	// check where IP packet is trying to go
+	if(ip_hdr_p->ip_dst == sa.s_addr)
+	{
+		//send ICMP packet
+	}
+	// this IP packet is destined for somewhere else
+	else
+	{
+		//handle TTL
+		if(ip_hdr_p->ip_ttl == 0 || (--ip_hdr_p) == 0)
+		{
+			//send ICMP Time exceeded
+		}
+		
+		
+		
+		
+		
+	}
+
+	
+	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
+	
+	// check protocol field in IP header
+	if (ip_proto == ip_protocol_icmp) 
+	{
+		min_length = sizeof(sr_icmp_hdr_t);
+		//checks if length of packet is as long as ethernet + ICMP header
+		if (len < min_length)
+		{
+			fprintf(stderr, "ICMP, length too small\n");
+			return;
+		}
+	}
+}
+                   
+ 
+ 
+/*---------------------------------------------------------------------
  * Method: sr_handlepacket(uint8_t* p,char* interface)
  * Scope:  Global
  *
@@ -84,24 +160,50 @@ void sr_handlepacket(struct sr_instance *sr,
   assert(interface);
 
   printf("*** -> Received packet of length %d \n",len);
-
+    
   /* fill in code here */
+  
+  
   sr_ethernet_hdr_t *eth_hdr_p = NULL;
   sr_ip_hdr_t       *ip_hdr_p  = NULL;
   sr_arp_hdr_t      *arp_hdr_p = NULL;
   
+  int min_length = sizeof(sr_ethernet_hdr_t);
+  
+  // checks if the length of packet is as long as ethernet header
+  if (len < min_length) 
+  {
+	fprintf(stderr, "Ethernet, length too small\n");
+    return;
+  }
+  
+  
   eth_hdr_p = (sr_ethernet_hdr_t *) malloc(sizeof(sr_ethernet_hdr_t));
   memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
   uint16_t ethtype = ethertype(packet);
+  
+  
   switch(ethtype)
   {
     case ethertype_ip:
     {
-        ip_hdr_p  = malloc(sizeof(sr_ip_hdr_t));
-        memcpy(ip_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_ip_hdr_t));
+		min_length += sizeof(sr_ip_hdr_t);
+		//check if length of packet is as long as ethernet + IP header
+		if(len < min_length)
+		{
+			fprintf(stderr, "IP, length too small\n");
+			return;
+		}
     } break;
     case ethertype_arp:
     {
+		min_length += sizeof(sr_arp_hdr_t);
+		//check if length of packet is as long as ethernet + arp header
+		if(len < min_length)
+		{
+			fprintf(stderr, "ARP, length too small");
+			return;
+		}
         arp_hdr_p = malloc(sizeof(sr_arp_hdr_t));
         memcpy(arp_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_arp_hdr_t));
     } break;
