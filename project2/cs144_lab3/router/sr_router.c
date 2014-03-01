@@ -154,7 +154,8 @@ void sr_init(struct sr_instance* sr)
 		if (len < min_length)
 		{
 			fprintf(stderr, "ICMP, length too small\n");
-			return;
+			// FIXME
+            return -1;
 		}
 	}
 	*/
