@@ -69,6 +69,7 @@ void sr_init(struct sr_instance* sr)
 			// send ICMP Time exceeded
 		}
 		
+		//ip_dst -> interface name
 		struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
 		                                ip_hdr_p->ip_dst);
 		if(rt_entry == NULL)
@@ -76,6 +77,7 @@ void sr_init(struct sr_instance* sr)
 			// send ICMP network unreachable
 		}
 		
+		//interface name -> physical addr
 		struct sr_if* if_entry = sr_get_interface(sr, 
 												  rt_entry->interface);
 		// if there is no entry for the interface that packet specifies
@@ -84,7 +86,7 @@ void sr_init(struct sr_instance* sr)
 			return -1;
 		}
 		
-		//find arp entry for the ip_dst
+		// ip_dst -> 
 		struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, 
 														   ip_hdr_p->ip_dst);												   
 		if(arp_entry == NULL)
@@ -110,6 +112,8 @@ void sr_init(struct sr_instance* sr)
 {
 	int min_length        = 0;
 	sr_ip_hdr_t* ip_hdr_p = NULL;
+	
+	// FIXME free code
 	ip_hdr_p              = malloc(sizeof(sr_ip_hdr_t));
     
 	// copies IP header into pointer
@@ -143,9 +147,9 @@ void sr_init(struct sr_instance* sr)
 		return -1;
 	}
 
-	/*
-	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
 	
+	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
+	/*
 	// check protocol field in IP header
 	if (ip_proto == ip_protocol_icmp) 
 	{
@@ -160,7 +164,7 @@ void sr_init(struct sr_instance* sr)
 	}
 	*/
 	//FIXME
-	return -1;
+	return 0;
 }
                    
  
@@ -226,6 +230,7 @@ void sr_handlepacket(struct sr_instance *sr,
 			fprintf(stderr, "IP, length too small\n");
 			return;
 		}
+		sr_handle_IP(sr, packet, len, interface);
     } break;
     case ethertype_arp:
     {
