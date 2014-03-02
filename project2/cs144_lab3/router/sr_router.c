@@ -246,8 +246,6 @@ void sr_handlepacket(struct sr_instance *sr,
 
 }/* end sr_ForwardPacket */
 
-static 
-
 static int sr_handle_ip(struct sr_instance *sr,
                         sr_ip_hdr_t         *ip_hdr,
                         sr_ethernet_hdr_t   *eth_hdr,

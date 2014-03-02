@@ -310,5 +310,3 @@ static void sr_print_if_list__wrap(struct sr_instance* sr)
     printf("Router interfaces:\n");
     sr_print_if_list(sr);
 }
-
-static int void
