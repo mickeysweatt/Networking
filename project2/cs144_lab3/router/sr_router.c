@@ -24,8 +24,8 @@
 #include "sr_utils.h"
 
 static int sr_handle_ip(struct sr_instance *sr,
-                        sr_ip_hdr_t         *ip_hdr,
-                        sr_ethernet_hdr_t   *eth_hdr,
+                        sr_ip_hdr_t        *ip_hdr,
+                        sr_ethernet_hdr_t  *eth_hdr,
                         unsigned int        len,
                         char               *interface);
 
@@ -36,12 +36,24 @@ static int sr_handle_ip(struct sr_instance *sr,
  * Initialize the routing subsystem
  *
  *---------------------------------------------------------------------*/
-
-void sr_init(struct sr_instance* sr)
+static void sr_init_sr_interface_list(struct sr_instance* sr)
+{
+    struct in_addr ip_addr;
+    inet_aton("10.0.1.11", &ip_addr);
+    unsigned char mac_3[]  = {0x0a,0x2d, 0xeb, 0x6e, 0x0e, 0x29};
+    unsigned char mac_2[] = {0x4a, 0x56, 0xb8, 0x89, 0x4c, 0xb6};
+    unsigned char mac_1[] = {0x5e,0xc3,0x6a,0xdd,0xe5,0xc8};
+    sr_init_interface(sr, "eth3", ip_addr.s_addr, mac_3);
+    inet_aton("107.21.14.129", &ip_addr);
+    sr_init_interface(sr, "eth2", ip_addr.s_addr, mac_2);
+    inet_aton("107.23.34.64", &ip_addr);
+    sr_init_interface(sr, "eth1", ip_addr.s_addr, mac_1);
+}
+ 
+void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
     /* REQUIRES */
     assert(sr);
-
     /* Initialize cache and cache cleanup thread */
     sr_arpcache_init(&(sr->cache));
 
@@ -54,7 +66,10 @@ void sr_init(struct sr_instance* sr)
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
     
     /* Add initialization code here! */
-
+    sr_load_rt(sr, rtable_file);
+    sr_init_sr_interface_list(sr);
+    sr_arpcache_init(&(sr->cache));
+    sr_arpcache_dump(&(sr->cache));
 } /* -- sr_init -- */
 
 /*---------------------------------------------------------------------

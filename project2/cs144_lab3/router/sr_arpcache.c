@@ -252,10 +252,19 @@ void sr_arpcache_dump(struct sr_arpcache *cache) {
     fprintf(stderr, "-----------------------------------------------------------\n");
     
     int i;
-    for (i = 0; i < SR_ARPCACHE_SZ; i++) {
+    for (i = 0; i < SR_ARPCACHE_SZ; i++) 
+    {
         struct sr_arpentry *cur = &(cache->entries[i]);
         unsigned char *mac = cur->mac;
-        fprintf(stderr, "%.1x%.1x%.1x%.1x%.1x%.1x   %.8x   %.24s   %d\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], ntohl(cur->ip), ctime(&(cur->added)), cur->valid);
+        fprintf(stderr, "%.1x%.1x%.1x%.1x%.1x%.1x   %.8x   %.24s   %d\n", mac[0],
+                                                                          mac[1],
+                                                                          mac[2],
+                                                                          mac[3],
+                                                                          mac[4],
+                                                                          mac[5],
+                                                                          ntohl(cur->ip),
+                                                                          ctime(&(cur->added)), 
+                                                                          cur->valid);
     }
     
     fprintf(stderr, "\n");

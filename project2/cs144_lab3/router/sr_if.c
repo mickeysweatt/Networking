@@ -33,7 +33,7 @@
  * exist.
  *
  *---------------------------------------------------------------------*/
-
+ 
 struct sr_if* sr_get_interface(struct sr_instance* sr, const char* name)
 {
     struct sr_if* if_walker = 0;
@@ -50,18 +50,32 @@ struct sr_if* sr_get_interface(struct sr_instance* sr, const char* name)
         { return if_walker; }
         if_walker = if_walker->next;
     }
-
+    
     return 0;
 } /* -- sr_get_interface -- */
 
+
+void sr_init_interface(struct sr_instance  *sr, 
+                       const char          *name, 
+                       uint32_t             ip, 
+                       const unsigned char *mac)
+{
+    // if it is not already in the interface list
+    
+    if (0 == sr_get_interface(sr, name))
+    {
+        sr_add_interface(sr, name);
+        sr_set_ether_ip  (sr, ip);
+        sr_set_ether_addr(sr, mac);
+    }
+}
 /*--------------------------------------------------------------------- 
  * Method: sr_add_interface(..)
  * Scope: Global
  *
  * Add and interface to the router's list
  *
- *---------------------------------------------------------------------*/
-
+ *---------------------------------------------------------------------*/ 
 void sr_add_interface(struct sr_instance* sr, const char* name)
 {
     struct sr_if* if_walker = 0;
