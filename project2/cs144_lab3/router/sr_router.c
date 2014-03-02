@@ -23,12 +23,6 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 
-static int sr_handle_ip(struct sr_instance *sr,
-                        sr_ip_hdr_t        *ip_hdr,
-                        sr_ethernet_hdr_t  *eth_hdr,
-                        unsigned int        len,
-                        char               *interface);
-
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
  * Scope:  Global
@@ -36,6 +30,7 @@ static int sr_handle_ip(struct sr_instance *sr,
  * Initialize the routing subsystem
  *
  *---------------------------------------------------------------------*/
+
 static void sr_init_sr_interface_list(struct sr_instance* sr)
 {
     struct in_addr ip_addr;
@@ -72,10 +67,49 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
     sr_arpcache_dump(&(sr->cache));
 } /* -- sr_init -- */
 
-/*---------------------------------------------------------------------
- * Method: sr_find_entry
- *--------------------------------------------------------------------*/
 
+/*---------------------------------------------------------------------
+ * Method: sr_send_IP
+ *--------------------------------------------------------------------*/
+ int sr_send_IP(struct sr_instance *sr, 
+                       sr_ip_hdr_t *ip_hdr_p)
+ {
+ 		// handle TTL
+		if(ip_hdr_p->ip_ttl == 0 || (--(ip_hdr_p->ip_ttl) == 0))
+		{
+			// send ICMP Time exceeded
+		}
+		
+		//ip_dst -> interface name
+		struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
+		                                ip_hdr_p->ip_dst);
+		if(rt_entry == NULL)
+		{
+			// send ICMP network unreachable
+		}
+		
+		//interface name -> physical addr
+		struct sr_if* if_entry = sr_get_interface(sr, 
+												  rt_entry->interface);
+		// if there is no entry for the interface that packet specifies
+		if(if_entry == NULL)
+		{
+			return -1;
+		}
+		
+		// ip_dst -> 
+		struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, 
+														   ip_hdr_p->ip_dst);												   
+		if(arp_entry == NULL)
+		{
+			//send ARP request
+		}
+		
+		//change up IP header
+		//send
+		
+		return 0;
+ }
 
 /*---------------------------------------------------------------------
  * Method: sr_handle_IP
@@ -83,9 +117,9 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
  *--------------------------------------------------------------------*/
 
  int sr_handle_IP(struct sr_instance *sr,
-                   uint8_t            *packet/* lent */,
-                   unsigned int        len,
-                   char               *interface/* lent */)
+                   uint8_t           *packet/* lent */,
+                   unsigned int       len,
+                   char              *interface/* lent */)
 {
 	int min_length        = 0;
 	sr_ip_hdr_t* ip_hdr_p = NULL;
@@ -195,7 +229,6 @@ void sr_handlepacket(struct sr_instance *sr,
   memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
   uint16_t ethtype = ethertype(packet);
   
-  
   switch(ethtype)
   {
     case ethertype_ip:
@@ -228,7 +261,11 @@ void sr_handlepacket(struct sr_instance *sr,
   }
   if (ip_hdr_p)
   {
-    sr_handle_ip(sr, ip_hdr_p, eth_hdr_p, len, interface);
+    sr_handle_IP(sr, packet, len, interface);
+  }
+  else if (arp_hdr_p)
+  {
+	//sr_handle_arp(
   }
   // clean-up
   if (ip_hdr_p)
@@ -244,22 +281,4 @@ void sr_handlepacket(struct sr_instance *sr,
     free(arp_hdr_p);
   }
 
-}/* end sr_ForwardPacket */
-
-static int sr_handle_ip(struct sr_instance *sr,
-                        sr_ip_hdr_t         *ip_hdr,
-                        sr_ethernet_hdr_t   *eth_hdr,
-                        unsigned int        len,
-                        char               *interface)
-{
-    fprintf(stderr, "NOT IMPLEMENTED!!\n");
-    // 1. Loop up dst_ip in routing table
-    struct sr_rt *entry= sr_find_rt_entry(sr->routing_table, 
-                                           ip_hdr->ip_dst);
-    if (entry)
-    {
-        return -1;
-    }
-    // 1. That this point we have the interface to send it down
-    return -1;
-}   
+}
