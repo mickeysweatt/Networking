@@ -35,6 +35,8 @@
 
 extern char* optarg;
 
+const int DEBUG = 1;
+
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
 
@@ -150,7 +152,10 @@ int main(int argc, char **argv)
         Debug("Connected to new instantiation of topology template %s\n", template);
         rtable = "rtable.vrhost";
     }
-    //sr_load_rt_wrap(&sr, rtable);
+    else
+    {
+        rtable = rtable;
+    }
     /* call router init (for arp subsystem etc.) */
     sr_init(&sr, rtable);
     assert( sr_verify_routing_table(&sr) == 0);
@@ -299,23 +304,11 @@ int sr_verify_routing_table(struct sr_instance* sr)
     return ret;
 } /* -- sr_verify_routing_table -- */
 
-static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
-    if(sr_load_rt(sr, rtable) != 0) {
-        fprintf(stderr,"Error setting up routing table from file %s\n",
-                rtable);
-        exit(1);
-    }
-
-
-    printf("Loading routing table\n");
-    printf("---------------------------------------------\n");
-    sr_print_routing_table(sr);
-    printf("---------------------------------------------\n");
-}
-
 static void sr_print_if_list__wrap(struct sr_instance* sr)
 {
     printf("---------------------------------------------\n");
     printf("Router interfaces:\n");
     sr_print_if_list(sr);
 }
+
+static int void
