@@ -64,6 +64,15 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
     return hdr;
 }
 
+void handle_arp(struct sr_instance *sr, 
+                uint8_t            *packet/* lent */,
+                unsigned int        len)
+{
+// If it is ARP, what is the oper field in ARP packet 
+    // If it is request -> ARP request processing 
+    // If it is reply -> ARP reply processing 
+}
+
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 {
    time_t now = time(NULL);
@@ -90,7 +99,15 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order.
    You must free the returned structure if it is not NULL. */
-struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, uint32_t ip) {
+struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, 
+                                       uint32_t            ip)
+{
+    // If get ARP reply -> process IP packet relying on it. 
+    // If ARP request time out (aber 5 times retransmission) -> ICMP
+    // host unreachable  
+    // Found ARP entry, use it as dst MAC address, use outgoing
+    // interface MAC as src MAC address, send IP packet
+
     pthread_mutex_lock(&(cache->lock));
     
     struct sr_arpentry *entry = NULL, *copy = NULL;

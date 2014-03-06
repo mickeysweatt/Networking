@@ -579,8 +579,7 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     }
 
     /* Create packet */
-    sr_pkt = (c_packet_header *)malloc(len +
-            sizeof(c_packet_header));
+    sr_pkt = (c_packet_header *)malloc(len + sizeof(c_packet_header));
     assert(sr_pkt);
     sr_pkt->mLen  = htonl(total_len);
     sr_pkt->mType = htonl(VNSPACKET);
