@@ -120,121 +120,90 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
                    uint8_t           *packet/* lent */,
                    unsigned int       len,
                    char              *interface/* lent */)
-<<<<<<< HEAD
-{
-	int min_length        = 0;
-=======
 {    
-    int min_length        = 0;
->>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
+	int min_length        = 0;
+
+	// FIXME free this structure
 	sr_ip_hdr_t* ip_hdr_p = NULL;
-	
-	// FIXME free code
 	ip_hdr_p              = malloc(sizeof(sr_ip_hdr_t));
-    
-	// copies IP header into pointer
 	memcpy(ip_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_ip_hdr_t));	
 
 	// check if checksum is correct for packet
 	uint16_t expected_cksum         = ip_hdr_p->ip_sum;
 	ip_hdr_p->ip_sum                = 0;
+	uint16_t calculated_cksum       = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
 	
-    uint16_t calculated_cksum       = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
-    // Verify checksum. If fail: drop the packet
+	// Verify checksum. If fail: drop the packet
 	if(expected_cksum != calculated_cksum)
 	{
 		fprintf(stderr, "Checksum error in packet");
 		return -1;
 	}
-	
+
 	//converts string IP to int IP
 	struct in_addr sa;
 	inet_aton("171.67.238.32", &sa);
-	
+
 	// check where IP packet is trying to go
 	// Check destination IP 
-    // If destined to router, what is the protocol field in IP header? 
-    if(ip_hdr_p->ip_dst == sa.s_addr)
+	// If destined to router, what is the protocol field in IP header? 
+	if(ip_hdr_p->ip_dst == sa.s_addr)
 	{
-        // ICMP -> ICMP processing (e.g., echo request, echo reply) 
-        // UDP, TCP -> ICMP port unreachable    
+		// ICMP -> ICMP processing (e.g., echo request, echo reply) 
+		// UDP, TCP -> ICMP port unreachable    
 	}
-    
-	// this IP packet is destined for somewhere else
+
+// this IP packet is destined for somewhere else
 	else
 	{
-<<<<<<< HEAD
 		//FIXME
 		return -1;
 	}
 
-	
-	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
-	/*
-	// check protocol field in IP header
-	if (ip_proto == ip_protocol_icmp) 
-	{
-		min_length = sizeof(sr_icmp_hdr_t);
-		//checks if length of packet is as long as ethernet + ICMP header
-		if (len < min_length)
-		{
-			fprintf(stderr, "ICMP, length too small\n");
-			// FIXME
-            return -1;
-		}
-	}
-	*/
-	//FIXME
-	return 0;
-=======
-		// Decrease TTL. If TTL = 0: ICMP Time exceed 
-		if(ip_hdr_p->ip_ttl == 0 || (--ip_hdr_p) == 0)
-		{
-			//send ICMP Time exceeded
-		}
-        // routing table look-up
-        
-        // Routing entry is not found -> ICMP network unreachable 
-        
-        // Routing entry found, get the IP of next hop, look up in ARP table 
-        
-        // No ARP entry, send ARP request
-        
-        // If get ARP reply -> process IP packet relying on it. 
-        
-        // Found ARP entry, use it as dst MAC address, use outgoing interface 
-        // MAC as src MAC address, send IP packet
-	}
-	
-	// check protocol field in IP header
+// check protocol field in IP header
 	switch(ip_hdr_p->ip_p)
-    {
-        case ip_protocol_icmp:
-        {
-            min_length = sizeof(sr_icmp_hdr_t);
-            //checks if length of packet is as long as ethernet + ICMP header
-            if (len < min_length)
-            {
-                fprintf(stderr, "ICMP, length too small\n");
-                // FIXME
-                return -1;
-            }
-        }
-        case ip_protocol_tcp:
-        case ip_protocol_udp:
-        {
-            //TODO validate regular sorts of packets
-        }
-        default:
-        {
-            // TODO decide what to do here
-        }
-       
-    }
-    // FIXME
-    return -1;
->>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
+	{
+		case ip_protocol_icmp:
+		{
+			min_length = sizeof(sr_icmp_hdr_t);
+			//checks if length of packet is as long as ethernet + ICMP header
+			if (len < min_length)
+			{
+				fprintf(stderr, "ICMP, length too small\n");
+				// FIXME
+				return -1;
+			}
+		}
+		case ip_protocol_tcp:
+		case ip_protocol_udp:
+		{
+			//TODO validate regular sorts of packets
+		}
+		default:
+		{
+			// TODO decide what to do here
+		}
+	}
+
+	// Decrease TTL. If TTL = 0: ICMP Time exceed 
+	if(ip_hdr_p->ip_ttl == 0 || (--ip_hdr_p) == 0)
+	{
+		//send ICMP Time exceeded
+	}
+	// routing table look-up
+
+	// Routing entry is not found -> ICMP network unreachable 
+
+	// Routing entry found, get the IP of next hop, look up in ARP table 
+
+	// No ARP entry, send ARP request
+
+	// If get ARP reply -> process IP packet relying on it. 
+
+	// Found ARP entry, use it as dst MAC address, use outgoing interface 
+	// MAC as src MAC address, send IP packet
 }
+
                    
  
  
@@ -287,13 +256,11 @@ void sr_handlepacket(struct sr_instance *sr,
   eth_hdr_p = (sr_ethernet_hdr_t *) malloc(sizeof(sr_ethernet_hdr_t));
   memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
   uint16_t ethtype = ethertype(packet);
-<<<<<<< HEAD
+
   
-=======
   // TODO Check dst MAC
 
   // Check the type of the ethenet packet
->>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
   switch(ethtype)
   {
     case ethertype_ip:
