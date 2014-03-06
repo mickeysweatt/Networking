@@ -119,9 +119,16 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
                    uint8_t           *packet/* lent */,
                    unsigned int       len,
                    char              *interface/* lent */)
+<<<<<<< HEAD
+{
+	int min_length        = 0;
+=======
 {    
     int min_length        = 0;
+>>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
 	sr_ip_hdr_t* ip_hdr_p = NULL;
+	
+	// FIXME free code
 	ip_hdr_p              = malloc(sizeof(sr_ip_hdr_t));
     
 	// copies IP header into pointer
@@ -155,6 +162,30 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
 	// this IP packet is destined for somewhere else
 	else
 	{
+<<<<<<< HEAD
+		//FIXME
+		return -1;
+	}
+
+	
+	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
+	/*
+	// check protocol field in IP header
+	if (ip_proto == ip_protocol_icmp) 
+	{
+		min_length = sizeof(sr_icmp_hdr_t);
+		//checks if length of packet is as long as ethernet + ICMP header
+		if (len < min_length)
+		{
+			fprintf(stderr, "ICMP, length too small\n");
+			// FIXME
+            return -1;
+		}
+	}
+	*/
+	//FIXME
+	return 0;
+=======
 		// Decrease TTL. If TTL = 0: ICMP Time exceed 
 		if(ip_hdr_p->ip_ttl == 0 || (--ip_hdr_p) == 0)
 		{
@@ -201,6 +232,7 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
     }
     // FIXME
     return -1;
+>>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
 }
                    
  
@@ -254,9 +286,13 @@ void sr_handlepacket(struct sr_instance *sr,
   eth_hdr_p = (sr_ethernet_hdr_t *) malloc(sizeof(sr_ethernet_hdr_t));
   memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
   uint16_t ethtype = ethertype(packet);
+<<<<<<< HEAD
+  
+=======
   // TODO Check dst MAC
 
   // Check the type of the ethenet packet
+>>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
   switch(ethtype)
   {
     case ethertype_ip:
