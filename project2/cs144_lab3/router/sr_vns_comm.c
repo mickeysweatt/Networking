@@ -36,13 +36,13 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 
-#include "sr_dumper.h"
-#include "sr_router.h"
-#include "sr_if.h"
-#include "sr_protocol.h"
+#include <sr_dumper.h>
+#include <sr_router.h>
+#include <sr_if.h>
+#include <sr_protocol.h>
 
-#include "sha1.h"
-#include "vnscommand.h"
+#include <sha1.h>
+#include <vnscommand.h>
 
 static void sr_log_packet(struct sr_instance* , uint8_t* , int );
 static int  sr_arp_req_not_for_us(struct sr_instance* sr,

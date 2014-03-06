@@ -12,13 +12,13 @@
 #ifndef sr_RT_H
 #define sr_RT_H
 
+#include <sr_if.h>
+
 #ifdef _DARWIN_
 #include <sys/types.h>
 #endif
 
 #include <netinet/in.h>
-
-#include "sr_if.h"
 
 /* ----------------------------------------------------------------------------
  * struct sr_rt

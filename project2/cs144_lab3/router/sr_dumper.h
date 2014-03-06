@@ -2,8 +2,7 @@
  * This header file defines data structures for logging packets in tcpdump
  * format as well as a set of operations for logging.
  */
-
-#ifdef _LINUX_
+ #ifdef _LINUX_
 #include <stdint.h>
 #endif /* _LINUX_ */
 
@@ -12,6 +11,7 @@
 #endif /* _DARWIN_ */
 
 #include <sys/time.h>
+#include <stdio.h>
 
 #define PCAP_VERSION_MAJOR 2
 #define PCAP_VERSION_MINOR 4

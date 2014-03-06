@@ -1,8 +1,8 @@
+#include <sr_dumper.h>
 #include <sys/time.h>
 #include <sys/types.h>
 
 #include <stdio.h>
-#include "sr_dumper.h"
 
 static void
 sf_write_header(FILE *fp, int linktype, int thiszone, int snaplen)

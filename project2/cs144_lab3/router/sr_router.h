@@ -9,11 +9,12 @@
 #ifndef SR_ROUTER_H
 #define SR_ROUTER_H
 
+#include <sr_arpcache.h>
+
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <stdio.h>
 
-#include "sr_arpcache.h"
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_

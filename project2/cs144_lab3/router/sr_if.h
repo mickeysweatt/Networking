@@ -12,6 +12,8 @@
 #ifndef sr_INTERFACE_H
 #define sr_INTERFACE_H
 
+#include <sr_protocol.h>
+
 #ifdef _LINUX_
 #include <stdint.h>
 #endif /* _LINUX_ */
@@ -24,7 +26,7 @@
 #include <inttypes.h>
 #endif
 
-#include "sr_protocol.h"
+
 
 struct sr_instance;
 

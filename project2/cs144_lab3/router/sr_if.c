@@ -8,7 +8,9 @@
  * Data structures and methods for handling interfaces
  *
  *---------------------------------------------------------------------------*/
-
+#include <sr_if.h>
+#include <sr_router.h>
+ 
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -22,8 +24,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "sr_if.h"
-#include "sr_router.h"
+
 
 /*--------------------------------------------------------------------- 
  * Method: sr_get_interface
