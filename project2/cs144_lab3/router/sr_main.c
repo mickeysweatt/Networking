@@ -29,9 +29,9 @@
 #include <getopt.h>
 #endif /* _LINUX_ */
 
-#include "sr_dumper.h"
-#include "sr_router.h"
-#include "sr_rt.h"
+#include <sr_dumper.h>
+#include <sr_router.h>
+#include <sr_rt.h>
 
 extern char* optarg;
 

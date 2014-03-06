@@ -1,3 +1,4 @@
+#include <sr_arpcache.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -7,11 +8,11 @@
 #include <pthread.h>
 #include <sched.h>
 #include <string.h>
-#include "sr_arpcache.h"
-#include "sr_router.h"
-#include "sr_if.h"
-#include "sr_protocol.h"
-#include "sr_utils.h"
+
+#include <sr_router.h>
+#include <sr_if.h>
+#include <sr_protocol.h>
+#include <sr_utils.h>
 
 /* 
   This function gets called every second. For each request sent out, we keep
@@ -102,11 +103,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, 
                                        uint32_t            ip)
 {
-    // If get ARP reply -> process IP packet relying on it. 
-    // If ARP request time out (aber 5 times retransmission) -> ICMP
-    // host unreachable  
-    // Found ARP entry, use it as dst MAC address, use outgoing
-    // interface MAC as src MAC address, send IP packet
+    
 
     pthread_mutex_lock(&(cache->lock));
     

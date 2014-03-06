@@ -6,7 +6,8 @@
  * Description:
  *
  *---------------------------------------------------------------------------*/
-
+#include <sr_rt.h>
+ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -19,8 +20,7 @@
 #define __USE_MISC 1 /* force linux to show inet_aton */
 #include <arpa/inet.h>
 
-#include "sr_rt.h"
-#include "sr_router.h"
+#include <sr_router.h>
 
 /*---------------------------------------------------------------------
  * Method:
