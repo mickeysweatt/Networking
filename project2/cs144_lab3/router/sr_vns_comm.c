@@ -433,7 +433,7 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
                     sizeof(struct sr_ethernet_hdr),
                     (char*)(buf + sizeof(c_base))) )
             { break; }
-
+            
             /* -- log packet -- */
             sr_log_packet(sr, buf + sizeof(c_packet_header),
                     ntohl(sr_pkt->mLen) - sizeof(c_packet_header));
@@ -535,16 +535,18 @@ sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
         return 0;
     }
 
-    if ( memcmp( ether_hdr->ether_shost, iface->addr, ETHER_ADDR_LEN) != 0 ){
+    if ( memcmp(ether_hdr->ether_shost, iface->addr, ETHER_ADDR_LEN) != 0 ){
         fprintf( stderr, "** Error, source address does not match interface\n");
         return 0;
     }
-
-    /* TODO */
+    
+     
     /* Check destination, hardware address.  If it is private (i.e. destined
      * to a virtual interface) ensure it is going to the correct topology
      * Note: This check should really be done server side ...
      */
+     
+     
 
     return 1;
 
@@ -590,7 +592,8 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     /* -- log packet -- */
     sr_log_packet(sr,buf,len);
 
-    if ( ! sr_ether_addrs_match_interface( sr, buf, iface) ){
+    if (!sr_ether_addrs_match_interface( sr, buf, iface) )
+    {
         fprintf( stderr, "*** Error: problem with ethernet header, check log\n");
         free ( sr_pkt );
         return -1;
