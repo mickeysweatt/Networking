@@ -143,10 +143,10 @@ int main(int argc, char **argv)
         Debug("Requesting topology %d\n", topo);
 
     /* connect to server and negotiate session */
-    // if(sr_connect_to_server(&sr,port,server) == -1)
-    // {
-        // return 1;
-    // }
+    if(sr_connect_to_server(&sr,port,server) == -1)
+    {
+        return 1;
+    }
 
     if(template != NULL && strcmp(rtable, "rtable.vrhost") == 0) { /* we've recv'd the rtable now, so read it in */
         Debug("Connected to new instantiation of topology template %s\n", template);
@@ -158,12 +158,10 @@ int main(int argc, char **argv)
     }
     /* call router init (for arp subsystem etc.) */
     sr_init(&sr, rtable);
-    assert( sr_verify_routing_table(&sr) == 0);
+    
     sr_print_routing_table(&sr);
-    sr_print_if_list__wrap(&sr);
     /* -- whizbang main loop ;-) */
-    //while( sr_read_from_server(&sr) == 1);
-
+    while( sr_read_from_server(&sr) == 1);
     sr_destroy_instance(&sr);
 
     return 0;

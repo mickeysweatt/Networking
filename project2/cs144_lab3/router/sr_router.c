@@ -30,21 +30,8 @@
  *
  *---------------------------------------------------------------------*/
 
-static void sr_init_sr_interface_list(struct sr_instance* sr)
-{
-    struct in_addr ip_addr;
-    inet_aton("10.0.1.11", &ip_addr);
-    unsigned char mac_3[]  = {0x0a,0x2d, 0xeb, 0x6e, 0x0e, 0x29};
-    unsigned char mac_2[] = {0x4a, 0x56, 0xb8, 0x89, 0x4c, 0xb6};
-    unsigned char mac_1[] = {0x5e,0xc3,0x6a,0xdd,0xe5,0xc8};
-    sr_init_interface(sr, "eth3", ip_addr.s_addr, mac_3);
-    inet_aton("107.21.14.129", &ip_addr);
-    sr_init_interface(sr, "eth2", ip_addr.s_addr, mac_2);
-    inet_aton("107.23.34.64", &ip_addr);
-    sr_init_interface(sr, "eth1", ip_addr.s_addr, mac_1);
-}
- 
-void sr_init(struct sr_instance* sr, const char rtable_file[])
+
+ void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
     /* REQUIRES */
     assert(sr);
@@ -61,9 +48,8 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
     
     /* Add initialization code here! */
     sr_load_rt(sr, rtable_file);
-    sr_init_sr_interface_list(sr);
     sr_arpcache_init(&(sr->cache));
-    sr_arpcache_dump(&(sr->cache));
+    //sr_arpcache_dump(&(sr->cache));
 } /* -- sr_init -- */
 
 
@@ -73,41 +59,41 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
  int sr_send_IP(struct sr_instance *sr, 
                        sr_ip_hdr_t *ip_hdr_p)
  {
- 		// handle TTL
-		if(ip_hdr_p->ip_ttl == 0 || (--(ip_hdr_p->ip_ttl) == 0))
-		{
-			// send ICMP Time exceeded
-		}
-		
-		//ip_dst -> interface name
-		struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
-		                                ip_hdr_p->ip_dst);
-		if(rt_entry == NULL)
-		{
-			// send ICMP network unreachable
-		}
-		
-		//interface name -> physical addr
-		struct sr_if* if_entry = sr_get_interface(sr, 
-												  rt_entry->interface);
-		// if there is no entry for the interface that packet specifies
-		if(if_entry == NULL)
-		{
-			return -1;
-		}
-		
-		// ip_dst -> 
-		struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, 
-														   ip_hdr_p->ip_dst);												   
-		if(arp_entry == NULL)
-		{
-			//send ARP request
-		}
-		
-		//change up IP header
-		//send
-		
-		return 0;
+    // handle TTL
+    if(ip_hdr_p->ip_ttl == 0 || (--(ip_hdr_p->ip_ttl) == 0))
+    {
+        // send ICMP Time exceeded
+    }
+    
+    //ip_dst -> interface name
+    struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
+                                    ip_hdr_p->ip_dst);
+    if(rt_entry == NULL)
+    {
+        // send ICMP network unreachable
+    }
+    
+    //interface name -> physical addr
+    struct sr_if* if_entry = sr_get_interface(sr, 
+                                              rt_entry->interface);
+    // if there is no entry for the interface that packet specifies
+    if(if_entry == NULL)
+    {
+        return -1;
+    }
+    
+    // ip_dst -> 
+    struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, 
+                                                       ip_hdr_p->ip_dst);												   
+    if(arp_entry == NULL)
+    {
+        //send ARP request
+    }
+    
+    //change up IP header
+    //send
+    
+    return 0;
  }
 
 /*---------------------------------------------------------------------
@@ -119,16 +105,9 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
                    uint8_t           *packet/* lent */,
                    unsigned int       len,
                    char              *interface/* lent */)
-<<<<<<< HEAD
-{
-	int min_length        = 0;
-=======
 {    
     int min_length        = 0;
->>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
 	sr_ip_hdr_t* ip_hdr_p = NULL;
-	
-	// FIXME free code
 	ip_hdr_p              = malloc(sizeof(sr_ip_hdr_t));
     
 	// copies IP header into pointer
@@ -162,30 +141,6 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
 	// this IP packet is destined for somewhere else
 	else
 	{
-<<<<<<< HEAD
-		//FIXME
-		return -1;
-	}
-
-	
-	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
-	/*
-	// check protocol field in IP header
-	if (ip_proto == ip_protocol_icmp) 
-	{
-		min_length = sizeof(sr_icmp_hdr_t);
-		//checks if length of packet is as long as ethernet + ICMP header
-		if (len < min_length)
-		{
-			fprintf(stderr, "ICMP, length too small\n");
-			// FIXME
-            return -1;
-		}
-	}
-	*/
-	//FIXME
-	return 0;
-=======
 		// Decrease TTL. If TTL = 0: ICMP Time exceed 
 		if(ip_hdr_p->ip_ttl == 0 || (--ip_hdr_p) == 0)
 		{
@@ -232,7 +187,6 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
     }
     // FIXME
     return -1;
->>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
 }
                    
  
@@ -286,13 +240,9 @@ void sr_handlepacket(struct sr_instance *sr,
   eth_hdr_p = (sr_ethernet_hdr_t *) malloc(sizeof(sr_ethernet_hdr_t));
   memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
   uint16_t ethtype = ethertype(packet);
-<<<<<<< HEAD
-  
-=======
   // TODO Check dst MAC
 
   // Check the type of the ethenet packet
->>>>>>> 75df088b42a2e13d6b70946b3d5e0e0d3016faa2
   switch(ethtype)
   {
     case ethertype_ip:
