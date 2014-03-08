@@ -105,7 +105,10 @@
                    uint8_t           *packet/* lent */,
                    unsigned int       len,
                    char              *interface/* lent */)
-{    
+{   
+	
+	printf("*** -> Handling IP packet\n");
+	
 	int min_length        = 0;
 
 	// FIXME free this structure
@@ -117,6 +120,9 @@
 	uint16_t expected_cksum         = ip_hdr_p->ip_sum;
 	ip_hdr_p->ip_sum                = 0;
 	uint16_t calculated_cksum       = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
+	
+	printf("Expected cksum: %d\nCalculated_cksum: %d\n", 
+	        expected_cksum, calculated_cksum);
 	
 	// Verify checksum. If fail: drop the packet
 	if(expected_cksum != calculated_cksum)
@@ -243,12 +249,9 @@ void sr_handlepacket(struct sr_instance *sr,
   
   eth_hdr_p = (sr_ethernet_hdr_t *) malloc(sizeof(sr_ethernet_hdr_t));
   memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
-  uint16_t ethtype = ethertype(packet);
-<<<<<<< HEAD
-
+  uint16_t ethtype = ethertype(packet);	
   
-=======
->>>>>>> e19722b8b4cf2a0d0e6124ab3b37c57347ef122c
+  printf("Ethertype: %x\n", ethtype);
   // TODO Check dst MAC
 
   // Check the type of the ethenet packet
@@ -274,7 +277,27 @@ void sr_handlepacket(struct sr_instance *sr,
 			return;
 		}
         arp_hdr_p = malloc(sizeof(sr_arp_hdr_t));
-        memcpy(arp_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_arp_hdr_t));
+		print_hdrs(packet, len);
+		// hand spin arp response
+		
+		// hand spin ethernet
+		uint8_t mac[] = {0x7a, 0x2e, 0x9f, 0xd4, 0xc3, 0x8b};
+		uint8_t *buf = malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+		sr_ethernet_hdr_t *ether_hdr = buf;
+		sr_arp_hdr_t 	  *arp_hdr   = buf + sizeof(sr_ethernet_hdr_t);
+		memcpy(ether_hdr, packet, sizeof(sr_ethernet_hdr_t));
+		memcpy(ether_hdr->ether_dhost, ((sr_ethernet_hdr_t *)packet)->ether_shost, ETHER_ADDR_LEN);
+		memcpy(ether_hdr->ether_shost, mac, ETHER_ADDR_LEN);
+		
+		// hand spin arp
+        memcpy(arp_hdr, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_arp_hdr_t));
+		arp_hdr->ar_op = htons(0x2);
+		memcpy(arp_hdr->ar_sha, mac, ETHER_ADDR_LEN);
+		memcpy(arp_hdr->ar_tha, ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_sha, ETHER_ADDR_LEN);
+		arp_hdr->ar_sip = ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_tip;
+		arp_hdr->ar_tip = ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_sip;
+		char if_name[] = "eth3";
+		sr_send_packet(sr, buf, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), if_name);
     } break;
     default:
     {
