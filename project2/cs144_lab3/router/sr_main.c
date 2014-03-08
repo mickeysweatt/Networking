@@ -51,8 +51,6 @@ static void usage(char* );
 static void sr_init_instance(struct sr_instance* );
 static void sr_destroy_instance(struct sr_instance* );
 static void sr_set_user(struct sr_instance* );
-static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable);
-static void sr_print_if_list__wrap(struct sr_instance* sr);
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
 
@@ -301,10 +299,3 @@ int sr_verify_routing_table(struct sr_instance* sr)
 
     return ret;
 } /* -- sr_verify_routing_table -- */
-
-static void sr_print_if_list__wrap(struct sr_instance* sr)
-{
-    printf("---------------------------------------------\n");
-    printf("Router interfaces:\n");
-    sr_print_if_list(sr);
-}

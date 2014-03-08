@@ -39,6 +39,7 @@
 #include <sr_dumper.h>
 #include <sr_router.h>
 #include <sr_if.h>
+#include <sr_utils.h>
 #include <sr_protocol.h>
 
 #include <sha1.h>

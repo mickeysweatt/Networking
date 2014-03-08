@@ -215,7 +215,7 @@ int sr_address_is_valid(struct sr_instance* sr, const unsigned char* address)
     if(sr->if_list == 0)
     {
         printf(" Interface list empty \n");
-        return;
+        return - 1;
     }
 
     if_walker = sr->if_list;

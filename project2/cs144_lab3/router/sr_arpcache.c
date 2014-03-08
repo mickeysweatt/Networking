@@ -22,6 +22,8 @@
 
 static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr, 
                                              struct sr_arpreq   *req);
+                                             
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
 void sr_arpcache_sweepreqs(struct sr_instance *sr) 
 { 
@@ -67,14 +69,55 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
 
 void sr_handle_arp(struct sr_instance *sr, 
                    uint8_t            *packet/* lent */,
-                   unsigned int        len)
+                   unsigned int        len,
+                   char               *iface_name)
 {
     printf("NOT IMPLEMENTED\n");
     print_hdrs(packet, len);
-// If it is ARP, what is the oper field in ARP packet 
-    // If it is request -> ARP request processing 
-    // If it is reply -> ARP reply processing 
+    uint8_t *arp_buf = 
+           (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+    sr_ethernet_hdr_t *ether_hdr = (sr_ethernet_hdr_t *) arp_buf;
+    sr_arp_hdr_t 	  *arp_hdr   = 
+                    (sr_arp_hdr_t *)(arp_buf + sizeof(sr_ethernet_hdr_t));
+    memcpy(ether_hdr, packet, sizeof(sr_ethernet_hdr_t));
+    memcpy(arp_hdr, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_arp_hdr_t));
+    // If it is request -> ARP request processing    
+    if (arp_op_request == ntohs(arp_hdr->ar_op))
+    {   
+        struct sr_if *iface = sr_get_interface(sr, iface_name);
+        
+        memcpy(ether_hdr->ether_dhost, 
+               ((sr_ethernet_hdr_t *)packet)->ether_shost, 
+               ETHER_ADDR_LEN);
+        memcpy(ether_hdr->ether_shost, iface->addr, ETHER_ADDR_LEN);
+        
+        // hand spin arp
+        arp_hdr->ar_op = htons(0x2);
+        memcpy(arp_hdr->ar_sha, iface->addr, ETHER_ADDR_LEN);
+        memcpy(arp_hdr->ar_tha, 
+              ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_sha, 
+              ETHER_ADDR_LEN);
+        arp_hdr->ar_sip = 
+                 ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_tip;
+        arp_hdr->ar_tip = 
+                 ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_sip;
+        Debug("Sending:\n");
+        print_hdrs(packet, len);
+        sr_send_packet(sr, arp_buf, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), iface_name);
+    }
     
+    // If it is reply -> ARP reply processing 
+    else if (arp_op_reply == ntohs(arp_hdr->ar_op))
+    {
+        if (!sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip))
+        {
+            Debug("Updated arp cache entry\n");
+        }
+    }
+    else
+    {
+        // icmp response?
+    }
 }
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
