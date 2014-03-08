@@ -65,13 +65,16 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
     return hdr;
 }
 
-void handle_arp(struct sr_instance *sr, 
-                uint8_t            *packet/* lent */,
-                unsigned int        len)
+void sr_handle_arp(struct sr_instance *sr, 
+                   uint8_t            *packet/* lent */,
+                   unsigned int        len)
 {
+    printf("NOT IMPLEMENTED\n");
+    print_hdrs(packet, len);
 // If it is ARP, what is the oper field in ARP packet 
     // If it is request -> ARP request processing 
     // If it is reply -> ARP reply processing 
+    
 }
 
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)

@@ -311,7 +311,7 @@ void sr_handlepacket(struct sr_instance *sr,
   }
   else if (arp_hdr_p)
   {
-	//sr_handle_arp(
+	sr_handle_arp(sr, packet, len);
   }
   // clean-up
   if (ip_hdr_p)
