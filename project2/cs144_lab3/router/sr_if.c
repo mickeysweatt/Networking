@@ -10,7 +10,6 @@
  *---------------------------------------------------------------------------*/
 #include <sr_if.h>
 #include <sr_router.h>
-#include <sr_rt.h>
  
 #include <stdio.h>
 #include <assert.h>
@@ -170,7 +169,7 @@ void sr_print_if_list(struct sr_instance* sr)
 
     if(sr->if_list == 0)
     {
-        printf(" Interface list empty \n");
+        Debug(" Interface list empty \n");
         return;
     }
 
@@ -212,9 +211,15 @@ void sr_print_if(struct sr_if* iface)
 int sr_address_is_valid(struct sr_instance* sr, const unsigned char* address)
 {
     struct sr_if* if_walker = 0;
+    uint8_t broadcast_address[ETHER_ADDR_LEN];
+    memset(broadcast_address, ~0, ETHER_ADDR_LEN);
+    if (0 == memcmp(address, broadcast_address, ETHER_ADDR_LEN))
+    {
+        return 1;
+    }
     if(sr->if_list == 0)
     {
-        printf(" Interface list empty \n");
+        Debug(" Interface list empty \n");
         return - 1;
     }
 

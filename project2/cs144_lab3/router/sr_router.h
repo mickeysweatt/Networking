@@ -18,13 +18,14 @@
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
-#define Debug(x, args...) printf(x, ## args)
+#define Debug(x, args...); \
+        printf(x, ## args); fflush(stdout);
 #define DebugMAC(x) \
   do { int ivyl; for(ivyl=0; ivyl<5; ivyl++) printf("%02x:", \
   (unsigned char)(x[ivyl])); printf("%02x",(unsigned char)(x[5])); } while (0)
 #else
 #define Debug(x, args...) do{}while(0)
-#define DebugMAC(x) do{}while(0)
+#define Debug MAC(x) do{}while(0)
 #endif
 
 #define INIT_TTL 255
@@ -55,7 +56,7 @@ struct sr_instance
     struct sr_if        *if_list;       /* list of interfaces */
     struct sr_rt        *routing_table; /* routing table */
     struct sr_arpcache   cache;         /* ARP cache */
-    
+    struct in_addr       router_ip;     /* ip address of router */
     // for threading / DEBUGGING
     pthread_attr_t attr;
     FILE* logfile;
