@@ -511,7 +511,7 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
  * Method: sr_ether_addrs_match_interface(..)
  * Scope: Local
  *
- * Make sure ethernet addresses are sane so we don't muck uo the system.
+ * Make sure ethernet addresses are sane so we don't muck up the system.
  *
  *----------------------------------------------------------------------------*/
 
@@ -546,8 +546,13 @@ sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
      * to a virtual interface) ensure it is going to the correct topology
      * Note: This check should really be done server side ...
      */
-     
-     
+	 
+	 // Checks if mac addr of dest is valid
+     if(sr_address_is_valid(sr, ether_hdr->ether_dhost)  == 0)
+	 {
+		fprintf( stderr, "** Error, not valid mac addr\n");
+		return 0;
+	 }
 
     return 1;
 
