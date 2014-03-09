@@ -137,10 +137,6 @@ extern const int DEBUG;
 	ip_hdr_p->ip_sum                = 0;
 	uint16_t calculated_cksum       = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
 	
-	if (DEBUG) Debug("Expected cksum: %d\nCalculated_cksum: %d\n", 
-                                                              expected_cksum, 
-                                                              calculated_cksum);
-	
 	// Verify checksum. If fail: drop the packet
 	if(expected_cksum != calculated_cksum)
 	{
@@ -219,17 +215,8 @@ extern const int DEBUG;
                                  rt_entry->interface);
             // because the arp request in asynchronous, we must poll to see if
             // the request is ready
-            int times_checked = 0;
-            do
-            {
-                arp_entry = sr_arpcache_lookup(&sr->cache, 
-                                               rt_entry->dest.s_addr);
-                sleep(1);
-                times_checked++;
-            }
-            while (!arp_entry && times_checked <= 5);
         }					
-		if (arp_entry)
+		else
         {
             // Changing source and destination mac for next hop
             memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);

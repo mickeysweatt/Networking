@@ -20,7 +20,6 @@
   checking whether we should resend an request or destroy the arp request.
   See the comments in the header file for an idea of what it should look like.
 */
-uint16_t cksum(const void *_data, int len);
 
 extern const int DEBUG;
 
@@ -28,14 +27,6 @@ static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
                                              struct sr_arpreq   *req);
                                              
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
-
-sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
-
-sr_icmp_t3_hdr_t* makeICMP_hdr(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
-
-sr_ip_hdr_t* makeIP_hdr(uint8_t* buf);
-
-sr_ethernet_hdr_t* makeEthr_hdr(uint8_t* buf);
 
 void sr_arpcache_sweepreqs(struct sr_instance *sr) 
 { 
@@ -78,58 +69,7 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
     return hdr;
 }
 
-sr_ip_hdr_t* makeIP_hdr(uint8_t *buf)
-{
-   sr_ip_hdr_t *ip = malloc(sizeof(sr_ip_hdr_t));
-   memset(ip, 0, sizeof(sr_ip_hdr_t));
-   ip->ip_p = ip_protocol_icmp;
-   ip->ip_v = ip_version_ipv4;
-   ip->ip_tos = 1;
-   ip->ip_len = sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
-   ip->ip_id = 0;
-   ip->ip_off = 0;
-   ip->ip_ttl = INIT_TTL;
-   ip->ip_sum = cksum((void *)ip, sizeof(sr_ip_hdr_t));
-   sr_ip_hdr_t *topOfIp = (sr_ip_hdr_t *) (buf + sizeof(sr_ethernet_hdr_t));
-  // sr_ip_hdr_t *topOfIp = (sr_ip_hdr_t *) (req->packets->buf + sizeof(sr_ethernet_hdr_t));  
-   ip->ip_src = topOfIp->ip_dst;
-   ip->ip_dst = topOfIp->ip_src;
-   return ip;    
-}
-
-sr_ethernet_hdr_t* makeEthr_hdr(uint8_t* buf)
-{
-   sr_ethernet_hdr_t* et = malloc(sizeof(sr_ethernet_hdr_t));
-   memset(et, 0, sizeof(sr_ethernet_hdr_t));
-   sr_ethernet_hdr_t* topOfEthr = (sr_ethernet_hdr_t*) (buf);
-   memcpy(&(et->ether_shost), &(topOfEthr->ether_dhost), ETHER_ADDR_LEN);
-   memcpy(&(et->ether_dhost), &(topOfEthr->ether_shost), ETHER_ADDR_LEN); 
-   et->ether_type = ethertype_ip;
-   return et;
-}
-
-sr_icmp_t3_hdr_t* makeICMP_hdr(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1)
-{
-   sr_icmp_t3_hdr_t *s = malloc(sizeof(sr_icmp_t3_hdr_t));
-   memset(s, 0, sizeof(sr_icmp_t3_hdr_t));
-   s->icmp_type = t1; //set the type
-   s->icmp_code = c1; //set the code to be Host Unreachable
-   uint8_t *topOfIp = buf + sizeof(sr_ethernet_hdr_t);
-   memcpy(s->data, topOfIp, ICMP_DATA_SIZE);
-   s->icmp_sum = cksum((void *)s->data, ICMP_DATA_SIZE);
-   return s;
-}
-
-sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1)
-{
-   sr_icmp_response_t* resp = malloc(sizeof(sr_icmp_response_t));
-   memset(resp, 0, sizeof(sr_icmp_response_t));
-   resp->eth = makeEthr_hdr(buf);
-   resp->ip = makeIP_hdr(buf);
-   resp->s = makeICMP_hdr(buf, t1, c1);
-   return resp;
-}
-
+void handle_waiting_packets(struct sr_instance *sr, uint32_t ip);
 
 void sr_handle_arp(struct sr_instance *sr, 
                    uint8_t            *packet/* lent */,
@@ -191,6 +131,7 @@ void sr_handle_arp(struct sr_instance *sr,
         {
             if (DEBUG) Debug("Updated arp cache entry\n");
         }
+        handle_waiting_packets(sr, arp_hdr->ar_sip);
     }
     else
     {
@@ -198,11 +139,41 @@ void sr_handle_arp(struct sr_instance *sr,
     }
 }
 
+void handle_waiting_packets(struct sr_instance *sr, 
+                            uint32_t            ip)
+{
+    struct sr_arpcache *cache = &sr->cache;
+    pthread_mutex_lock(&(cache->lock));
+    struct sr_arpreq *curr_req = NULL;
+    for (curr_req  = cache->requests; 
+         NULL     != curr_req; 
+         curr_req  = curr_req->next)
+    {
+        if (ip == curr_req ->ip)
+        {
+            struct sr_packet* curr_packet;
+            for (curr_packet = curr_req ->packets; 
+                 NULL       != curr_packet; 
+                 curr_packet = curr_packet->next)
+            {
+                sr_handlepacket(sr, 
+                                curr_packet->buf, 
+                                curr_packet->len, 
+                                curr_packet->iface);
+            }
+            break;
+        }
+    }
+    pthread_mutex_unlock(&(cache->lock));
+}                           
+
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 {
    time_t now = time(NULL);
+   struct sr_arpcache *cache = &sr->cache;
    if (difftime(now, req->sent) > 1.0)
    {
+       pthread_mutex_lock(&(cache->lock));
        if (req->times_sent >= 5)
        {
            // send icmp host unreachable to source addr of all
@@ -236,6 +207,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
            req->sent = now;
            req->times_sent++;
        }
+       pthread_mutex_unlock(&(cache->lock));
    }
 }
 /* You should not need to touch the rest of this code. */
