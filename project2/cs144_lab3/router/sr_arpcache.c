@@ -26,9 +26,18 @@ extern const int DEBUG;
 static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr, 
                                              struct sr_arpreq   *req);
                                              
-void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
+static void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
-void sr_arpcache_sweepreqs(struct sr_instance *sr) 
+static void sr_arpcache_sweepreqs(struct sr_instance *sr);
+
+static void handle_waiting_packets(struct sr_instance *sr, 
+                                   uint32_t            ip,
+                                   void (* callback) (struct sr_instance* , 
+                                                      uint8_t * , 
+                                                      unsigned int , 
+                                                      char* ));
+
+static void sr_arpcache_sweepreqs(struct sr_instance *sr)
 { 
     struct sr_arpreq *curr_req  = sr->cache.requests, *next_req = NULL;
     while (curr_req)
@@ -69,7 +78,6 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
     return hdr;
 }
 
-void handle_waiting_packets(struct sr_instance *sr, uint32_t ip);
 
 void sr_handle_arp(struct sr_instance *sr, 
                    uint8_t            *packet/* lent */,
@@ -131,7 +139,7 @@ void sr_handle_arp(struct sr_instance *sr,
         {
             if (DEBUG) Debug("Updated arp cache entry\n");
         }
-        handle_waiting_packets(sr, arp_hdr->ar_sip);
+        handle_waiting_packets(sr, arp_hdr->ar_sip, sr_handlepacket);
     }
     else
     {
@@ -139,8 +147,12 @@ void sr_handle_arp(struct sr_instance *sr,
     }
 }
 
-void handle_waiting_packets(struct sr_instance *sr, 
-                            uint32_t            ip)
+static void handle_waiting_packets(struct sr_instance *sr, 
+                                   uint32_t            ip,
+                                   void (* callback) (struct sr_instance*, 
+                                                      uint8_t * , 
+                                                      unsigned int , 
+                                                      char* ))
 {
     struct sr_arpcache *cache = &sr->cache;
     pthread_mutex_lock(&(cache->lock));
@@ -156,11 +168,12 @@ void handle_waiting_packets(struct sr_instance *sr,
                  NULL       != curr_packet; 
                  curr_packet = curr_packet->next)
             {
-                sr_handlepacket(sr, 
-                                curr_packet->buf, 
-                                curr_packet->len, 
-                                curr_packet->iface);
+                callback(sr, 
+                         curr_packet->buf, 
+                         curr_packet->len, 
+                         curr_packet->iface);
             }
+            sr_arpreq_destroy(cache, curr_req);
             break;
         }
     }
@@ -179,7 +192,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
            // send icmp host unreachable to source addr of all
            // pkts waiting on this request
            Debug("---Dropping an arp request---\n");
-           sr_arpreq_destroy(&(sr->cache), req);
+           
        }
        else
        {
