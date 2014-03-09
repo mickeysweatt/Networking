@@ -18,8 +18,8 @@
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
-#define Debug(x, args...); \
-        printf(x, ## args); fflush(stdout);
+#define Debug(x, args...); {printf(x, ## args); fflush(stdout);}
+#define fprintf(x, y, args...); {fprintf(x, y, ## args); fflush(x);}
 #define DebugMAC(x) \
   do { int ivyl; for(ivyl=0; ivyl<5; ivyl++) printf("%02x:", \
   (unsigned char)(x[ivyl])); printf("%02x",(unsigned char)(x[5])); } while (0)

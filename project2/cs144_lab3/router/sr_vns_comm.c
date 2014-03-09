@@ -485,8 +485,7 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
                 fprintf(stderr,"Routing table not consistent with hardware\n");
                 return -1;
             }
-            printf(" <-- Ready to process packets --> \n");
-            fflush(stdout);
+            Debug(" <-- Ready to process packets --> \n");
             break;
 
             /* ---------------- VNS_RTABLE ---------------- */
