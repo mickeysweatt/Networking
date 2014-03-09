@@ -109,7 +109,7 @@
 	
 	printf("*** -> Handling IP packet\n");
 	
-	int min_length        = 0;
+	int min_length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
 
 	// FIXME Free these structures
 	sr_ethernet_hdr_t* eth_hdr_p = NULL;
@@ -143,83 +143,75 @@
 	struct in_addr sa;
 	inet_aton("171.67.238.32", &sa);
 
-	// check where IP packet is trying to go
 	// Check destination IP 
 	// If destined to router, what is the protocol field in IP header? 
 	if(ip_hdr_p->ip_dst == sa.s_addr)
 	{
-		// ICMP -> ICMP processing (e.g., echo request, echo reply) 
-		// UDP, TCP -> ICMP port unreachable    
+		switch(ip_hdr_p->ip_p)
+		{
+			case ip_protocol_icmp:
+			{
+				// Checks if packet is sizeof ethernet + IP + ICMP header
+				min_length += sizeof(sr_icmp_hdr_t);
+				if (len < min_length)
+				{
+					fprintf(stderr, "ICMP, length too small\n");
+					// FIXME
+					return -1;
+				}
+				// ICMP -> ICMP processing (e.g., echo request, echo reply)
+			} break;
+			default:
+			{
+				// UDP, TCP -> ICMP port unreachable
+			}
+		}    
 	}
-
-		
-	// Check protocol field in IP header
-	switch(ip_hdr_p->ip_p)
+	else
 	{
-		case ip_protocol_icmp:
+		// Decrease TTL. If TTL = 0: ICMP Time exceed 
+		if(0 == ip_hdr_p->ip_ttl || 0 == (--(ip_hdr_p->ip_ttl)))
 		{
-			printf("IP protocol icmp\n");
-			min_length = sizeof(sr_icmp_hdr_t);
-			//checks if length of packet is as long as ethernet + ICMP header
-			if (len < min_length)
-			{
-				fprintf(stderr, "ICMP, length too small\n");
-				// FIXME
-				return -1;
-			}
-		} break;
-		case ip_protocol_tcp:
-		{
-			// Decrease TTL. If TTL = 0: ICMP Time exceed 
-			if(0 == ip_hdr_p->ip_ttl || 0 == (--(ip_hdr_p->ip_ttl)))
-			{
-				// TODO validate regular sorts of packets
-			}
-			
-			// Routing table lookup
-			struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
-											          ip_hdr_p->ip_dst);
-			if(rt_entry == NULL)
-			{
-				// Send ICMP network unreachable
-			}
-			
-			// Translate interface name to phys addr
-			struct sr_if* if_entry = sr_get_interface(sr, rt_entry->interface);
-			if(if_entry == NULL)
-			{
-				return -1;
-			}
-			
-			// Translate destination IP to next hop IP
-			struct sr_arpentry* arp_entry = 
-							   sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_dst);												   
-			if(arp_entry == NULL)
-			{
-				// Send ARP request
-				printf("Need to send ARP\n");
-			}
-			
-			// Changing source and destination mac for next hop
-			memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);
-			memcpy(eth_hdr_p->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
-			
-			// Recalc cksum
-			ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
-			
-			// checksum
-			// dest and source
-			// ttl
-
-		} break;
-		case ip_protocol_udp:
-		{
-		
-		} break;
-		default:
-		{
-			// TODO decide what to do here
+			// TODO validate regular sorts of packets
 		}
+		
+		// Routing table lookup
+		struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
+												  ip_hdr_p->ip_dst);
+		if(rt_entry == NULL)
+		{
+			// Send ICMP network unreachable
+		}
+		
+		// Translate interface name to phys addr
+		struct sr_if* if_entry = sr_get_interface(sr, rt_entry->interface);
+		if(if_entry == NULL)
+		{
+			return -1;
+		}
+		
+		// Translate destination IP to next hop IP
+		struct sr_arpentry* arp_entry = 
+						   sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_dst);
+		if(arp_entry == NULL)
+		{
+			// Send ARP request
+			printf("Need to send ARP\n");
+		}
+		
+		// Changing source and destination mac for next hop
+		memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);
+		memcpy(eth_hdr_p->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
+		
+		// Recalc cksum
+		ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
+		
+		// checksum
+		// dest and source
+		// ttl
+	
+	
+	
 	}
 	
 /*
