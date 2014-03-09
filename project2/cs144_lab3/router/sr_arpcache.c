@@ -1,3 +1,4 @@
+#include <sr_arpcache.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -7,11 +8,11 @@
 #include <pthread.h>
 #include <sched.h>
 #include <string.h>
-#include "sr_arpcache.h"
-#include "sr_router.h"
-#include "sr_if.h"
-#include "sr_protocol.h"
-#include "sr_utils.h"
+
+#include <sr_router.h>
+#include <sr_if.h>
+#include <sr_protocol.h>
+#include <sr_utils.h>
 
 /* 
   This function gets called every second. For each request sent out, we keep
@@ -22,6 +23,8 @@ uint16_t cksum(const void *_data, int len);
 
 static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr, 
                                              struct sr_arpreq   *req);
+                                             
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
 void sr_arpcache_sweepreqs(struct sr_instance *sr) 
 { 
@@ -65,13 +68,12 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
     return hdr;
 }
 
-
 sr_ip_hdr_t* makeIP_hdr(struct sr_instance *sr, struct sr_arpreq *req)
 {
    sr_ip_hdr_t *ip = malloc(sizeof(sr_ip_hdr_t));
    memset(ip, 0, sizeof(sr_ip_hdr_t));
    ip->ip_p = ip_protocol_icmp;
-   ip->ip_v = ip_protocol_ipv4;
+   ip->ip_v = ip_version_ipv4;
    ip->ip_tos = 1;
    ip->ip_len = sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
    ip->ip_id = 0;
@@ -118,6 +120,59 @@ sr_icmp_response_t* makeICMP_response(struct sr_instance *sr, struct sr_arpreq *
 }
 
 
+void sr_handle_arp(struct sr_instance *sr, 
+                   uint8_t            *packet/* lent */,
+                   unsigned int        len,
+                   char               *iface_name)
+{
+    printf("NOT IMPLEMENTED\n");
+    print_hdrs(packet, len);
+    uint8_t *arp_buf = 
+           (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+    sr_ethernet_hdr_t *ether_hdr = (sr_ethernet_hdr_t *) arp_buf;
+    sr_arp_hdr_t 	  *arp_hdr   = 
+                    (sr_arp_hdr_t *)(arp_buf + sizeof(sr_ethernet_hdr_t));
+    memcpy(ether_hdr, packet, sizeof(sr_ethernet_hdr_t));
+    memcpy(arp_hdr, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_arp_hdr_t));
+    // If it is request -> ARP request processing    
+    if (arp_op_request == ntohs(arp_hdr->ar_op))
+    {   
+        struct sr_if *iface = sr_get_interface(sr, iface_name);
+        
+        memcpy(ether_hdr->ether_dhost, 
+               ((sr_ethernet_hdr_t *)packet)->ether_shost, 
+               ETHER_ADDR_LEN);
+        memcpy(ether_hdr->ether_shost, iface->addr, ETHER_ADDR_LEN);
+        
+        // hand spin arp
+        arp_hdr->ar_op = htons(0x2);
+        memcpy(arp_hdr->ar_sha, iface->addr, ETHER_ADDR_LEN);
+        memcpy(arp_hdr->ar_tha, 
+              ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_sha, 
+              ETHER_ADDR_LEN);
+        arp_hdr->ar_sip = 
+                 ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_tip;
+        arp_hdr->ar_tip = 
+                 ((sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t)))->ar_sip;
+        Debug("Sending:\n");
+        print_hdrs(packet, len);
+        sr_send_packet(sr, arp_buf, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), iface_name);
+    }
+    
+    // If it is reply -> ARP reply processing 
+    else if (arp_op_reply == ntohs(arp_hdr->ar_op))
+    {
+        if (!sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip))
+        {
+            Debug("Updated arp cache entry\n");
+        }
+    }
+    else
+    {
+        // icmp response?
+    }
+}
+
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 {
    time_t now = time(NULL);
@@ -145,7 +200,11 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order.
    You must free the returned structure if it is not NULL. */
-struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, uint32_t ip) {
+struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache, 
+                                       uint32_t            ip)
+{
+    
+
     pthread_mutex_lock(&(cache->lock));
     
     struct sr_arpentry *entry = NULL, *copy = NULL;

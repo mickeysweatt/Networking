@@ -10,24 +10,17 @@
  * for routing.
  *
  **********************************************************************/
-
+#include <sr_router.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "sr_if.h"
-#include "sr_rt.h"
-#include "sr_router.h"
-#include "sr_protocol.h"
-#include "sr_arpcache.h"
-#include "sr_utils.h"
-
-static int sr_handle_ip(struct sr_instance *sr,
-                        sr_ip_hdr_t        *ip_hdr,
-                        sr_ethernet_hdr_t  *eth_hdr,
-                        unsigned int        len,
-                        char               *interface);
+#include <sr_if.h>
+#include <sr_rt.h>
+#include <sr_protocol.h>
+#include <sr_arpcache.h>
+#include <sr_utils.h>
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -36,21 +29,9 @@ static int sr_handle_ip(struct sr_instance *sr,
  * Initialize the routing subsystem
  *
  *---------------------------------------------------------------------*/
-static void sr_init_sr_interface_list(struct sr_instance* sr)
-{
-    struct in_addr ip_addr;
-    inet_aton("10.0.1.11", &ip_addr);
-    unsigned char mac_3[]  = {0x0a,0x2d, 0xeb, 0x6e, 0x0e, 0x29};
-    unsigned char mac_2[] = {0x4a, 0x56, 0xb8, 0x89, 0x4c, 0xb6};
-    unsigned char mac_1[] = {0x5e,0xc3,0x6a,0xdd,0xe5,0xc8};
-    sr_init_interface(sr, "eth3", ip_addr.s_addr, mac_3);
-    inet_aton("107.21.14.129", &ip_addr);
-    sr_init_interface(sr, "eth2", ip_addr.s_addr, mac_2);
-    inet_aton("107.23.34.64", &ip_addr);
-    sr_init_interface(sr, "eth1", ip_addr.s_addr, mac_1);
-}
- 
-void sr_init(struct sr_instance* sr, const char rtable_file[])
+
+
+ void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
     /* REQUIRES */
     assert(sr);
@@ -67,15 +48,53 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
     
     /* Add initialization code here! */
     sr_load_rt(sr, rtable_file);
-    sr_init_sr_interface_list(sr);
     sr_arpcache_init(&(sr->cache));
-    sr_arpcache_dump(&(sr->cache));
+    //sr_arpcache_dump(&(sr->cache));
 } /* -- sr_init -- */
 
-/*---------------------------------------------------------------------
- * Method: sr_find_entry
- *--------------------------------------------------------------------*/
 
+/*---------------------------------------------------------------------
+ * Method: sr_send_IP
+ *--------------------------------------------------------------------*/
+ int sr_send_IP(struct sr_instance *sr, 
+                       sr_ip_hdr_t *ip_hdr_p)
+ {
+    // handle TTL
+    if(ip_hdr_p->ip_ttl == 0 || (--(ip_hdr_p->ip_ttl) == 0))
+    {
+        // send ICMP Time exceeded
+    }
+    
+    //ip_dst -> interface name
+    struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
+                                    ip_hdr_p->ip_dst);
+    if(rt_entry == NULL)
+    {
+        // send ICMP network unreachable
+    }
+    
+    //interface name -> physical addr
+    struct sr_if* if_entry = sr_get_interface(sr, 
+                                              rt_entry->interface);
+    // if there is no entry for the interface that packet specifies
+    if(if_entry == NULL)
+    {
+        return -1;
+    }
+    
+    // ip_dst -> 
+    struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, 
+                                                       ip_hdr_p->ip_dst);												   
+    if(arp_entry == NULL)
+    {
+        //send ARP request
+    }
+    
+    //change up IP header
+    //send
+    
+    return 0;
+ }
 
 /*---------------------------------------------------------------------
  * Method: sr_handle_IP
@@ -83,66 +102,134 @@ void sr_init(struct sr_instance* sr, const char rtable_file[])
  *--------------------------------------------------------------------*/
 
  int sr_handle_IP(struct sr_instance *sr,
-                   uint8_t            *packet/* lent */,
-                   unsigned int        len,
-                   char               *interface/* lent */)
-{
-	int min_length        = 0;
-	sr_ip_hdr_t* ip_hdr_p = NULL;
-	ip_hdr_p              = malloc(sizeof(sr_ip_hdr_t));
-    
-	// copies IP header into pointer
-	memcpy(ip_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_ip_hdr_t));
+                   uint8_t           *packet/* lent */,
+                   unsigned int       len,
+                   char              *interface/* lent */)
+{   
 	
+	printf("*** -> Handling IP packet\n");
+	
+	int min_length        = 0;
 
-	// check if checksum is correct for packet
+	// FIXME Free these structures
+	sr_ethernet_hdr_t* eth_hdr_p = NULL;
+	sr_ip_hdr_t* ip_hdr_p        = NULL;
+	eth_hdr_p                    = malloc(sizeof(sr_ethernet_hdr_t));
+	ip_hdr_p                     = malloc(sizeof(sr_ip_hdr_t));
+	
+	memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
+	memcpy(ip_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_ip_hdr_t));	
+
+	// Check if checksum is correct for packet
 	uint16_t expected_cksum         = ip_hdr_p->ip_sum;
 	ip_hdr_p->ip_sum                = 0;
 	uint16_t calculated_cksum       = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
 	
+	printf("Expected cksum: %d\nCalculated_cksum: %d\n", expected_cksum, 
+														 calculated_cksum);
+	
+	// Verify checksum. If fail: drop the packet
 	if(expected_cksum != calculated_cksum)
 	{
 		fprintf(stderr, "Checksum error in packet");
 		return -1;
 	}
 	
-	//converts string IP to int IP
+	printf("Passed Checksum\n");
+	print_hdr_ip((uint8_t *)ip_hdr_p);
+	
+
+	// Converts string IP to int IP
 	struct in_addr sa;
 	inet_aton("171.67.238.32", &sa);
-	
+
 	// check where IP packet is trying to go
+	// Check destination IP 
+	// If destined to router, what is the protocol field in IP header? 
 	if(ip_hdr_p->ip_dst == sa.s_addr)
 	{
-		//send ICMP packet
-	}
-	// this IP packet is destined for somewhere else
-	else
-	{
-		//handle TTL
-		if(ip_hdr_p->ip_ttl == 0 || (--ip_hdr_p) == 0)
-		{
-			//send ICMP Time exceeded
-		}
+		// ICMP -> ICMP processing (e.g., echo request, echo reply) 
+		// UDP, TCP -> ICMP port unreachable    
 	}
 
-	
-	uint8_t ip_proto  = ip_protocol(packet + sizeof(sr_ethernet_hdr_t));
-	
-	// check protocol field in IP header
-	if (ip_proto == ip_protocol_icmp) 
+		
+	// Check protocol field in IP header
+	switch(ip_hdr_p->ip_p)
 	{
-		min_length = sizeof(sr_icmp_hdr_t);
-		//checks if length of packet is as long as ethernet + ICMP header
-		if (len < min_length)
+		case ip_protocol_icmp:
 		{
-			fprintf(stderr, "ICMP, length too small\n");
-			// FIXME
-            return -1;
+			printf("IP protocol icmp\n");
+			min_length = sizeof(sr_icmp_hdr_t);
+			//checks if length of packet is as long as ethernet + ICMP header
+			if (len < min_length)
+			{
+				fprintf(stderr, "ICMP, length too small\n");
+				// FIXME
+				return -1;
+			}
+		} break;
+		case ip_protocol_tcp:
+		{
+			// Decrease TTL. If TTL = 0: ICMP Time exceed 
+			if(0 == ip_hdr_p->ip_ttl || 0 == (--(ip_hdr_p->ip_ttl)))
+			{
+				// TODO validate regular sorts of packets
+			}
+			
+			// Routing table lookup
+			struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
+											          ip_hdr_p->ip_dst);
+			if(rt_entry == NULL)
+			{
+				// Send ICMP network unreachable
+			}
+			
+			// Translate interface name to phys addr
+			struct sr_if* if_entry = sr_get_interface(sr, rt_entry->interface);
+			if(if_entry == NULL)
+			{
+				return -1;
+			}
+			
+			// Translate destination IP to next hop IP
+			struct sr_arpentry* arp_entry = 
+							   sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_dst);												   
+			if(arp_entry == NULL)
+			{
+				// Send ARP request
+				printf("Need to send ARP\n");
+			}
+
+			
+
+		} break;
+		case ip_protocol_udp:
+		{
+		
+		} break;
+		default:
+		{
+			// TODO decide what to do here
 		}
 	}
-    // FIXME
-    return -1;
+	
+/*
+	// routing table look-up
+
+	// Routing entry is not found -> ICMP network unreachable 
+
+	// Routing entry found, get the IP of next hop, look up in ARP table 
+
+	// No ARP entry, send ARP request
+
+	// If get ARP reply -> process IP packet relying on it. 
+
+	// Found ARP entry, use it as dst MAC address, use outgoing interface 
+	// MAC as src MAC address, send IP packet
+*/
+	return 0;
 }
+
                    
  
  
@@ -176,11 +263,7 @@ void sr_handlepacket(struct sr_instance *sr,
     
   /* fill in code here */
   
-  
-  sr_ethernet_hdr_t *eth_hdr_p = NULL;
-  sr_ip_hdr_t       *ip_hdr_p  = NULL;
-  sr_arp_hdr_t      *arp_hdr_p = NULL;
-  
+  // Receive a packet 
   int min_length = sizeof(sr_ethernet_hdr_t);
   
   // checks if the length of packet is as long as ethernet header
@@ -189,14 +272,10 @@ void sr_handlepacket(struct sr_instance *sr,
 	fprintf(stderr, "Ethernet, length too small\n");
     return;
   }
-  
-  
-  eth_hdr_p = (sr_ethernet_hdr_t *) malloc(sizeof(sr_ethernet_hdr_t));
-  memcpy(eth_hdr_p, packet, sizeof(sr_ethernet_hdr_t));
-  uint16_t ethtype = ethertype(packet);
-  
-  
-  switch(ethtype)
+   // TODO Check dst MAC
+
+  // Check the type of the ethenet packet
+  switch(ethertype(packet))
   {
     case ethertype_ip:
     {
@@ -207,18 +286,19 @@ void sr_handlepacket(struct sr_instance *sr,
 			fprintf(stderr, "IP, length too small\n");
 			return;
 		}
+		sr_handle_IP(sr, packet, len, interface);
     } break;
     case ethertype_arp:
     {
 		min_length += sizeof(sr_arp_hdr_t);
+		//check if length of packet is as long as ethernet + arp header
 		//check if length of packet is as long as ethernet + arp header
 		if(len < min_length)
 		{
 			fprintf(stderr, "ARP, length too small");
 			return;
 		}
-        arp_hdr_p = malloc(sizeof(sr_arp_hdr_t));
-        memcpy(arp_hdr_p, packet + sizeof(sr_ethernet_hdr_t), sizeof(sr_arp_hdr_t));
+        sr_handle_arp(sr, packet, len, interface);
     } break;
     default:
     {
@@ -226,40 +306,5 @@ void sr_handlepacket(struct sr_instance *sr,
         perror("ERROR");
     }
   }
-  if (ip_hdr_p)
-  {
-    sr_handle_ip(sr, ip_hdr_p, eth_hdr_p, len, interface);
-  }
-  // clean-up
-  if (ip_hdr_p)
-  {
-    free(ip_hdr_p);
-  }
-  if (eth_hdr_p)
-  {
-    free(eth_hdr_p);
-  }
-  if (arp_hdr_p)
-  {
-    free(arp_hdr_p);
-  }
 
-}/* end sr_ForwardPacket */
-
-static int sr_handle_ip(struct sr_instance *sr,
-                        sr_ip_hdr_t         *ip_hdr,
-                        sr_ethernet_hdr_t   *eth_hdr,
-                        unsigned int        len,
-                        char               *interface)
-{
-    fprintf(stderr, "NOT IMPLEMENTED!!\n");
-    // 1. Loop up dst_ip in routing table
-    struct sr_rt *entry= sr_find_rt_entry(sr->routing_table, 
-                                           ip_hdr->ip_dst);
-    if (entry)
-    {
-        return -1;
-    }
-    // 1. That this point we have the interface to send it down
-    return -1;
-}   
+}

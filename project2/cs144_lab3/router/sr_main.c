@@ -29,11 +29,13 @@
 #include <getopt.h>
 #endif /* _LINUX_ */
 
-#include "sr_dumper.h"
-#include "sr_router.h"
-#include "sr_rt.h"
+#include <sr_dumper.h>
+#include <sr_router.h>
+#include <sr_rt.h>
 
 extern char* optarg;
+
+const int DEBUG = 1;
 
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
@@ -49,8 +51,6 @@ static void usage(char* );
 static void sr_init_instance(struct sr_instance* );
 static void sr_destroy_instance(struct sr_instance* );
 static void sr_set_user(struct sr_instance* );
-static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable);
-static void sr_print_if_list__wrap(struct sr_instance* sr);
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
 
@@ -141,24 +141,25 @@ int main(int argc, char **argv)
         Debug("Requesting topology %d\n", topo);
 
     /* connect to server and negotiate session */
-    // if(sr_connect_to_server(&sr,port,server) == -1)
-    // {
-        // return 1;
-    // }
+    if(sr_connect_to_server(&sr,port,server) == -1)
+    {
+        return 1;
+    }
 
     if(template != NULL && strcmp(rtable, "rtable.vrhost") == 0) { /* we've recv'd the rtable now, so read it in */
         Debug("Connected to new instantiation of topology template %s\n", template);
         rtable = "rtable.vrhost";
     }
-    //sr_load_rt_wrap(&sr, rtable);
+    else
+    {
+        rtable = rtable;
+    }
     /* call router init (for arp subsystem etc.) */
     sr_init(&sr, rtable);
-    assert( sr_verify_routing_table(&sr) == 0);
+    
     sr_print_routing_table(&sr);
-    sr_print_if_list__wrap(&sr);
     /* -- whizbang main loop ;-) */
-    //while( sr_read_from_server(&sr) == 1);
-
+    while( sr_read_from_server(&sr) == 1);
     sr_destroy_instance(&sr);
 
     return 0;
@@ -298,24 +299,3 @@ int sr_verify_routing_table(struct sr_instance* sr)
 
     return ret;
 } /* -- sr_verify_routing_table -- */
-
-static void sr_load_rt_wrap(struct sr_instance* sr, char* rtable) {
-    if(sr_load_rt(sr, rtable) != 0) {
-        fprintf(stderr,"Error setting up routing table from file %s\n",
-                rtable);
-        exit(1);
-    }
-
-
-    printf("Loading routing table\n");
-    printf("---------------------------------------------\n");
-    sr_print_routing_table(sr);
-    printf("---------------------------------------------\n");
-}
-
-static void sr_print_if_list__wrap(struct sr_instance* sr)
-{
-    printf("---------------------------------------------\n");
-    printf("Router interfaces:\n");
-    sr_print_if_list(sr);
-}

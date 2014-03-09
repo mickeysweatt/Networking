@@ -8,7 +8,9 @@
  * Data structures and methods for handling interfaces
  *
  *---------------------------------------------------------------------------*/
-
+#include <sr_if.h>
+#include <sr_router.h>
+ 
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -22,8 +24,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "sr_if.h"
-#include "sr_router.h"
+
 
 /*--------------------------------------------------------------------- 
  * Method: sr_get_interface
@@ -206,3 +207,26 @@ void sr_print_if(struct sr_if* iface)
     Debug("\n");
     Debug("\tinet addr %s\n",inet_ntoa(ip_addr));
 } /* -- sr_print_if -- */
+
+int sr_address_is_valid(struct sr_instance* sr, const unsigned char* address)
+{
+    struct sr_if* if_walker = 0;
+
+    if(sr->if_list == 0)
+    {
+        printf(" Interface list empty \n");
+        return - 1;
+    }
+
+    if_walker = sr->if_list;
+    
+    sr_print_if(if_walker);
+    while(if_walker->next)
+    {
+        if (memcmp(if_walker->addr, address, ETHER_ADDR_LEN))
+        {
+        }
+        
+    }
+    return 0;
+}

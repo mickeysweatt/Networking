@@ -36,13 +36,14 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 
-#include "sr_dumper.h"
-#include "sr_router.h"
-#include "sr_if.h"
-#include "sr_protocol.h"
+#include <sr_dumper.h>
+#include <sr_router.h>
+#include <sr_if.h>
+#include <sr_utils.h>
+#include <sr_protocol.h>
 
-#include "sha1.h"
-#include "vnscommand.h"
+#include <sha1.h>
+#include <vnscommand.h>
 
 static void sr_log_packet(struct sr_instance* , uint8_t* , int );
 static int  sr_arp_req_not_for_us(struct sr_instance* sr,
@@ -433,7 +434,7 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
                     sizeof(struct sr_ethernet_hdr),
                     (char*)(buf + sizeof(c_base))) )
             { break; }
-
+            
             /* -- log packet -- */
             sr_log_packet(sr, buf + sizeof(c_packet_header),
                     ntohl(sr_pkt->mLen) - sizeof(c_packet_header));
@@ -535,16 +536,18 @@ sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
         return 0;
     }
 
-    if ( memcmp( ether_hdr->ether_shost, iface->addr, ETHER_ADDR_LEN) != 0 ){
+    if ( memcmp(ether_hdr->ether_shost, iface->addr, ETHER_ADDR_LEN) != 0 ){
         fprintf( stderr, "** Error, source address does not match interface\n");
         return 0;
     }
-
-    /* TODO */
+    
+     
     /* Check destination, hardware address.  If it is private (i.e. destined
      * to a virtual interface) ensure it is going to the correct topology
      * Note: This check should really be done server side ...
      */
+     
+     
 
     return 1;
 
@@ -564,7 +567,10 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
                    unsigned int len,
                    const char* iface /* borrowed */)
 {
-    c_packet_header *sr_pkt;
+    printf("Trying to send:\n");
+	print_hdrs(buf, len);
+	
+	c_packet_header *sr_pkt;
     unsigned int total_len =  len + (sizeof(c_packet_header));
 
     /* REQUIRES */
@@ -579,8 +585,7 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     }
 
     /* Create packet */
-    sr_pkt = (c_packet_header *)malloc(len +
-            sizeof(c_packet_header));
+    sr_pkt = (c_packet_header *)malloc(len + sizeof(c_packet_header));
     assert(sr_pkt);
     sr_pkt->mLen  = htonl(total_len);
     sr_pkt->mType = htonl(VNSPACKET);
@@ -591,7 +596,8 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     /* -- log packet -- */
     sr_log_packet(sr,buf,len);
 
-    if ( ! sr_ether_addrs_match_interface( sr, buf, iface) ){
+    if (!sr_ether_addrs_match_interface( sr, buf, iface) )
+    {
         fprintf( stderr, "*** Error: problem with ethernet header, check log\n");
         free ( sr_pkt );
         return -1;

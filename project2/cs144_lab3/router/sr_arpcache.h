@@ -69,6 +69,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <pthread.h>
+#include <sr_protocol.h>
 
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0
@@ -83,7 +84,7 @@ struct sr_packet {
 };
 
 struct sr_arpentry {
-    unsigned char mac[6]; 
+    unsigned char mac[ETHER_ADDR_LEN]; 
     uint32_t ip;                /* IP addr in network byte order */
     time_t added;         
     int valid;
@@ -147,5 +148,9 @@ void sr_arpcache_dump(struct sr_arpcache *cache);
 int   sr_arpcache_init(struct sr_arpcache *cache);
 int   sr_arpcache_destroy(struct sr_arpcache *cache);
 void *sr_arpcache_timeout(void *cache_ptr);
-void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
+void  sr_handle_arp(struct sr_instance *sr, 
+                   uint8_t              *packet,
+                   unsigned int         len,
+                   char                *iface);
+
 #endif

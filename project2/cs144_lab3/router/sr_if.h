@@ -12,6 +12,8 @@
 #ifndef sr_INTERFACE_H
 #define sr_INTERFACE_H
 
+#include <sr_protocol.h>
+
 #ifdef _LINUX_
 #include <stdint.h>
 #endif /* _LINUX_ */
@@ -24,7 +26,7 @@
 #include <inttypes.h>
 #endif
 
-#include "sr_protocol.h"
+
 
 struct sr_instance;
 
@@ -50,6 +52,7 @@ void sr_add_interface(struct sr_instance*, const char*);
 void sr_set_ether_addr(struct sr_instance*, const unsigned char*);
 void sr_set_ether_ip(struct sr_instance*, uint32_t ip_nbo);
 struct sr_if* sr_get_interface(struct sr_instance* sr, const char* name);
+int sr_address_is_valid(struct sr_instance* sr, const unsigned char*);
 void sr_print_if_list(struct sr_instance*);
 void sr_print_if(struct sr_if*);
 
