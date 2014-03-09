@@ -129,6 +129,8 @@ struct sr_ip_hdr
   } __attribute__ ((packed)) ;
 typedef struct sr_ip_hdr sr_ip_hdr_t;
 
+
+
 /* 
  *  Ethernet packet header prototype.  Too many O/S's define this differently.
  *  Easy enough to solve that and define it here.
@@ -143,6 +145,42 @@ struct sr_ethernet_hdr
     uint16_t ether_type;                     /* packet type ID */
 } __attribute__ ((packed)) ;
 typedef struct sr_ethernet_hdr sr_ethernet_hdr_t;
+
+struct sr_icmp_response
+{
+   sr_ethernet_hdr_t* eth;
+   sr_ip_hdr_t* ip;             /* IP header */
+   sr_icmp_t3_hdr_t* s;         /* ICMP header */
+} __attribute__ ((packed)) ;
+typedef struct sr_icmp_response sr_icmp_response_t;
+
+enum sr_icmp_type {
+   icmp_type_echo_reply = 0,
+   icmp_type_destination_network_unreachable = 3,
+   icmp_type_destination_host_unreachable = 3,
+   icmp_type_destination_protocol_unreachable = 3,
+   icmp_type_destination_port_unreachable = 3,
+   icmp_type_destination_network_unknown = 3,
+   icmp_type_destination_host_unknown = 3,
+   icmp_type_echo_request = 8,
+   icmp_type_TLL_expired = 11,
+   icmp_type_IP_header_bad = 12,
+};
+
+enum sr_icmp_code {
+   icmp_code_echo_reply = 0,
+   icmp_code_destination_network_unreachable = 0,
+   icmp_code_destination_host_unreachable = 1,
+   icmp_code_destination_protocol_unreachable = 2,
+   icmp_code_destination_port_unreachable = 3,
+   icmp_code_destination_network_unknown = 6,
+   icmp_code_destination_host_unknown = 7,
+   icmp_code_echo_request = 0,
+   icmp_code_TLL_expired = 0,
+   icmp_code_IP_header_bad = 0,
+};
+
+
 
 enum sr_ip_protocol {
   ip_protocol_icmp = 0x0001,
