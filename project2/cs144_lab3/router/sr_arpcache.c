@@ -26,6 +26,14 @@ static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
                                              
 void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
+sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
+
+sr_icmp_t3_hdr_t* makeICMP_hdr(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
+
+sr_ip_hdr_t* makeIP_hdr(uint8_t* buf);
+
+sr_ethernet_hdr_t* makeEthr_hdr(uint8_t* buf);
+
 void sr_arpcache_sweepreqs(struct sr_instance *sr) 
 { 
     struct sr_arpreq *curr_req  = sr->cache.requests, *next_req = NULL;
@@ -98,25 +106,25 @@ sr_ethernet_hdr_t* makeEthr_hdr(uint8_t* buf)
    return et;
 }
 
-sr_icmp_t3_hdr_t* makeICMP_hdr(uint8_t* buf)
+sr_icmp_t3_hdr_t* makeICMP_hdr(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1)
 {
    sr_icmp_t3_hdr_t *s = malloc(sizeof(sr_icmp_t3_hdr_t));
    memset(s, 0, sizeof(sr_icmp_t3_hdr_t));
-   s->icmp_type = 3; //set the type
-   s->icmp_code = 1; //set the code to be Host Unreachable
+   s->icmp_type = t1; //set the type
+   s->icmp_code = c1; //set the code to be Host Unreachable
    uint8_t *topOfIp = buf + sizeof(sr_ethernet_hdr_t);
    memcpy(s->data, topOfIp, ICMP_DATA_SIZE);
    s->icmp_sum = cksum((void *)s->data, ICMP_DATA_SIZE);
    return s;
 }
 
-sr_icmp_response_t* makeICMP_response(uint8_t* buf)
+sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1)
 {
    sr_icmp_response_t* resp = malloc(sizeof(sr_icmp_response_t));
    memset(resp, 0, sizeof(sr_icmp_response_t));
    resp->eth = makeEthr_hdr(buf);
    resp->ip = makeIP_hdr(buf);
-   resp->s = makeICMP_hdr(buf);
+   resp->s = makeICMP_hdr(buf, t1, c1);
    return resp;
 }
 
@@ -181,7 +189,6 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
    {
        if (req->times_sent >= 5)
        {
-            sr_icmp_response_t* resp = makeICMP_response(sr, req);
            // send icmp host unreachable to source addr of all
            // pkts waiting on this request
            sr_arpreq_destroy(&(sr->cache), req);
