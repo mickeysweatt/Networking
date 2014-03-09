@@ -199,8 +199,17 @@
 				// Send ARP request
 				printf("Need to send ARP\n");
 			}
-
 			
+			// Changing source and destination mac for next hop
+			memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);
+			memcpy(eth_hdr_p->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
+			
+			// Recalc cksum
+			ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
+			
+			// checksum
+			// dest and source
+			// ttl
 
 		} break;
 		case ip_protocol_udp:
