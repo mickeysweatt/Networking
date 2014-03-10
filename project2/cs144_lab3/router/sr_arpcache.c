@@ -100,6 +100,8 @@ void sr_handle_arp(struct sr_instance *sr,
             Debug("===Incomming ARP Request===\n");
             print_hdrs(packet, len);
         }
+        // cache incomming informaiton as well
+        sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip);
         struct sr_if *iface = sr_get_interface(sr, iface_name);
         // construct the Ethernet Header
         // set the destination ip to the original source
@@ -173,10 +175,12 @@ static void handle_waiting_packets(struct sr_instance *sr,
                          curr_packet->len, 
                          curr_packet->iface);
             }
+            pthread_mutex_unlock(&(cache->lock));
             sr_arpreq_destroy(cache, curr_req);
-            break;
+            return;
         }
     }
+    fprintf(stderr, "%s:%d - No packets handled\n",__FILE__, __LINE__);
     pthread_mutex_unlock(&(cache->lock));
 }                           
 
