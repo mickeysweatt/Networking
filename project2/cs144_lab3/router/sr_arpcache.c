@@ -216,7 +216,8 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
                   arp_req, 
                   sizeof(sr_arp_hdr_t));
            if (DEBUG) Debug("====OUTGOING ARP REQUEST=====\n");
-           if (DEBUG) print_hdrs(arp_buf,sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+           if (DEBUG) print_hdrs(arp_buf,sizeof(sr_ethernet_hdr_t) + 
+                                         sizeof(sr_arp_hdr_t));
            sr_send_packet(sr, 
                           arp_buf, 
                           sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t),
@@ -307,7 +308,20 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
     {
         struct sr_packet *new_pkt = 
                            (struct sr_packet *)malloc(sizeof(struct sr_packet));
-        
+        // if specified pass handler does not match previous one
+        if (req->pass_handler && pass_handler &&
+            req->pass_handler != pass_handler)
+        {
+            fprintf(stderr, "PASS HANDLER OVERWRITTEN!\n");
+            assert(0);
+        }
+        // if specified pass handler does not match previous one
+        if (req->fail_handler && fail_handler &&
+            req->fail_handler != fail_handler)
+        {
+            fprintf(stderr, "FAIL HANDLER OVERWRITTEN!\n");
+            assert(0);
+        }
         new_pkt->buf = (uint8_t *)malloc(packet_len);
         memcpy(new_pkt->buf, packet, packet_len);
         new_pkt->len = packet_len;

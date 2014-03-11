@@ -222,7 +222,7 @@ static int sr_handle_IP(struct sr_instance *sr,
                                  len, 
                                  rt_entry->interface,
 								 sr_handle_IP,
-								 NULL);
+								 sr_handle_ICMP);
             // because the arp request in asynchronous, 
         }					
 		else
