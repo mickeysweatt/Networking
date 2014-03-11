@@ -28,6 +28,16 @@ static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
                                              
 static void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
+
+sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
+
+sr_icmp_t3_hdr_t* makeICMP_hdr(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
+
+sr_ip_hdr_t* makeIP_hdr(uint8_t* buf);
+
+sr_ethernet_hdr_t* makeEthr_hdr(uint8_t* buf);
+
+
 static void sr_arpcache_sweepreqs(struct sr_instance *sr);
 
 static void handle_waiting_packets(struct sr_instance *sr, 
@@ -77,6 +87,62 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
     memset(&hdr->ar_tha, 0, ETHER_ADDR_LEN);
     return hdr;
 }
+
+sr_ip_hdr_t* makeIP_hdr(uint8_t *buf)
+{
+   sr_ip_hdr_t *ip = malloc(sizeof(sr_ip_hdr_t));
+   memset(ip, 0, sizeof(sr_ip_hdr_t));
+   ip->ip_p = ip_protocol_icmp;
+   ip->ip_v = ip_version_ipv4;
+   ip->ip_tos = 1;
+   ip->ip_len = sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+   ip->ip_id = 0;
+   ip->ip_off = 0;
+   ip->ip_ttl = INIT_TTL;
+   ip->ip_sum = cksum((void *)ip, sizeof(sr_ip_hdr_t));
+   sr_ip_hdr_t *topOfIp = (sr_ip_hdr_t *) (buf + sizeof(sr_ethernet_hdr_t));
+  // sr_ip_hdr_t *topOfIp = (sr_ip_hdr_t *) (req->packets->buf + sizeof(sr_ethernet_hdr_t));  
+   ip->ip_src = topOfIp->ip_dst;
+   ip->ip_dst = topOfIp->ip_src;
+   return ip;    
+}
+
+
+
+sr_ethernet_hdr_t* makeEthr_hdr(uint8_t* buf)
+{
+   sr_ethernet_hdr_t* et = malloc(sizeof(sr_ethernet_hdr_t));
+   memset(et, 0, sizeof(sr_ethernet_hdr_t));
+   sr_ethernet_hdr_t* topOfEthr = (sr_ethernet_hdr_t*) (buf);
+   memcpy(&(et->ether_shost), &(topOfEthr->ether_dhost), ETHER_ADDR_LEN);
+   memcpy(&(et->ether_dhost), &(topOfEthr->ether_shost), ETHER_ADDR_LEN); 
+   et->ether_type = ethertype_ip;
+   return et;
+}
+
+sr_icmp_t3_hdr_t* makeICMP_hdr(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1)
+{
+   sr_icmp_t3_hdr_t *s = malloc(sizeof(sr_icmp_t3_hdr_t));
+   memset(s, 0, sizeof(sr_icmp_t3_hdr_t));
+   s->icmp_type = t1; //set the type
+   s->icmp_code = c1; //set the code to be Host Unreachable
+   uint8_t *topOfIp = buf + sizeof(sr_ethernet_hdr_t);
+   memcpy(s->data, topOfIp, ICMP_DATA_SIZE);
+   s->icmp_sum = cksum((void *)s->data, ICMP_DATA_SIZE);
+   return s;
+}
+
+sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1)
+{
+   sr_icmp_response_t* resp = malloc(sizeof(sr_icmp_response_t));
+   memset(resp, 0, sizeof(sr_icmp_response_t));
+   resp->eth = makeEthr_hdr(buf);
+   resp->ip = makeIP_hdr(buf);
+   resp->s = makeICMP_hdr(buf, t1, c1);
+   return resp;
+}
+
+
 
 
 void sr_handle_arp(struct sr_instance *sr, 
