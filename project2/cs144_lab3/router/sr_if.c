@@ -169,7 +169,7 @@ void sr_print_if_list(struct sr_instance* sr)
 
     if(sr->if_list == 0)
     {
-        printf(" Interface list empty \n");
+        Debug(" Interface list empty \n");
         return;
     }
 
@@ -211,22 +211,28 @@ void sr_print_if(struct sr_if* iface)
 int sr_address_is_valid(struct sr_instance* sr, const unsigned char* address)
 {
     struct sr_if* if_walker = 0;
-
+    uint8_t broadcast_address[ETHER_ADDR_LEN];
+    memset(broadcast_address, ~0, ETHER_ADDR_LEN);
+    if (0 == memcmp(address, broadcast_address, ETHER_ADDR_LEN))
+    {
+        return 1;
+    }
     if(sr->if_list == 0)
     {
-        printf(" Interface list empty \n");
+        Debug(" Interface list empty \n");
         return - 1;
     }
 
     if_walker = sr->if_list;
     
     sr_print_if(if_walker);
-    while(if_walker->next)
+    while(if_walker)
     {
         if (memcmp(if_walker->addr, address, ETHER_ADDR_LEN))
         {
+            break;
         }
-        
+        if_walker = if_walker->next;
     }
-    return 0;
+    return !!if_walker;
 }

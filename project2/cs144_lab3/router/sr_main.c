@@ -136,10 +136,13 @@ int main(int argc, char **argv)
 
     Debug("Client %s connecting to Server %s:%d\n", sr.user, server, port);
     if(template)
+    {
         Debug("Requesting topology template %s\n", template);
+    }
     else
+    {
         Debug("Requesting topology %d\n", topo);
-
+    }
     /* connect to server and negotiate session */
     if(sr_connect_to_server(&sr,port,server) == -1)
     {

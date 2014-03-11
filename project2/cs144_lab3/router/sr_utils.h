@@ -30,6 +30,16 @@
 
 #include <netinet/in.h>
 
+#include <string.h>
+
+#define swap(a, b) swap_internal(&(a), &(b), sizeof *(1 ? &(a) : &(b)))
+static inline void swap_internal(void *a, void *b, size_t size) {
+    char tmp[size];
+    memcpy(tmp, a, size);
+    memmove(a, b, size);
+    memcpy(b, tmp, size);
+}
+
 uint16_t cksum(const void *_data, int len);
 
 uint16_t ethertype(uint8_t *buf);

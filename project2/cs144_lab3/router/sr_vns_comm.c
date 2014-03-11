@@ -52,6 +52,8 @@ static int  sr_arp_req_not_for_us(struct sr_instance* sr,
                                   char* interface  /* lent */);
 int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expected_cmd);
 
+extern const int DEBUG;
+
 /*-----------------------------------------------------------------------------
  * Method: sr_session_closed_help(..)
  *
@@ -223,11 +225,11 @@ int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
                 sr_set_ether_addr(sr,(unsigned char*)hwinfo->mHWInfo[i].value);
                 break;
             default:
-                printf (" %d \n",ntohl(hwinfo->mHWInfo[i].mKey));
+                Debug (" %d \n",ntohl(hwinfo->mHWInfo[i].mKey));
         } /* -- switch -- */
     } /* -- for -- */
 
-    printf("Router interfaces:\n");
+    Debug("Router interfaces:\n");
     sr_print_if_list(sr);
 
     return num_entries;
@@ -313,9 +315,14 @@ int sr_handle_auth_request(struct sr_instance* sr, c_auth_request* req) {
 
 int sr_handle_auth_status(struct sr_instance* sr, c_auth_status* status) {
     if(status->auth_ok)
-        printf("successfully authenticated as %s\n", sr->user);
+    {
+        Debug("successfully authenticated as %s\n", sr->user);
+    }
     else
+    {
         fprintf(stderr, "Authentication failed as %s: %s\n", sr->user, status->msg);
+        fflush(stderr);
+    }
     return status->auth_ok;
 }
 
@@ -363,9 +370,12 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
                 perror("recv(..):sr_client.c::sr_read_from_server");
                 return -1;
             }
+            else if (0 == ret)
+            {
+                return ret;
+            }
             bytes_read += ret;
         } while ( errno == EINTR); /* be mindful of signals */
-
     }
 
     len = ntohl(len);
@@ -475,7 +485,7 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
                 fprintf(stderr,"Routing table not consistent with hardware\n");
                 return -1;
             }
-            printf(" <-- Ready to process packets --> \n");
+            Debug(" <-- Ready to process packets --> \n");
             break;
 
             /* ---------------- VNS_RTABLE ---------------- */
@@ -572,9 +582,6 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
                    unsigned int len,
                    const char* iface /* borrowed */)
 {
-    printf("Trying to send:\n");
-	print_hdrs(buf, len);
-	
 	c_packet_header *sr_pkt;
     unsigned int total_len =  len + (sizeof(c_packet_header));
 

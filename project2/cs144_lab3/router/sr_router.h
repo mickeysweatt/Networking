@@ -18,13 +18,14 @@
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
-#define Debug(x, args...) printf(x, ## args)
+#define Debug(x, args...); {printf(x, ## args); fflush(stdout);}
+#define fprintf(x, y, args...); {fprintf(x, y, ## args); fflush(x);}
 #define DebugMAC(x) \
   do { int ivyl; for(ivyl=0; ivyl<5; ivyl++) printf("%02x:", \
   (unsigned char)(x[ivyl])); printf("%02x",(unsigned char)(x[5])); } while (0)
 #else
 #define Debug(x, args...) do{}while(0)
-#define DebugMAC(x) do{}while(0)
+#define Debug MAC(x) do{}while(0)
 #endif
 
 #define INIT_TTL 255
@@ -55,7 +56,7 @@ struct sr_instance
     struct sr_if        *if_list;       /* list of interfaces */
     struct sr_rt        *routing_table; /* routing table */
     struct sr_arpcache   cache;         /* ARP cache */
-    
+    struct in_addr       router_ip;     /* ip address of router */
     // for threading / DEBUGGING
     pthread_attr_t attr;
     FILE* logfile;
@@ -71,7 +72,7 @@ int sr_read_from_server(struct sr_instance* );
 
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* sr, const char rtable_file[]);
-void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
+int sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );

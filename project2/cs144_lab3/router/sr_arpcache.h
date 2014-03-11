@@ -75,6 +75,10 @@
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0
 
+#define callback_functor(name) int (* name)(struct sr_instance*, uint8_t * ,\
+                                                      unsigned int , \
+                                                      char* )
+
 struct sr_instance;
 
 struct sr_icmp_response;
@@ -102,6 +106,8 @@ struct sr_arpreq {
                                    should update this. */
     struct sr_packet *packets;  /* List of pkts waiting on this req to finish */
     struct sr_arpreq *next;
+	callback_functor(pass_handler);
+	callback_functor(fail_handler);
 };
 
 struct sr_arpcache {
@@ -128,7 +134,9 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
                                        uint32_t            ip,
                                        uint8_t            *packet,
                                        unsigned int        packet_len,
-                                       char               *iface);
+                                       char               *iface,
+									   callback_functor(pass_handler),
+									   callback_functor(fail_handler));
 
 /* This method performs two functions:
    1) Looks up this IP in the request queue. If it is found, returns a pointer

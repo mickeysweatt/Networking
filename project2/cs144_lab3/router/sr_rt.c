@@ -90,8 +90,11 @@ int sr_load_rt(struct sr_instance* sr,const char* filename)
  *
  *---------------------------------------------------------------------*/
 
-void sr_add_rt_entry(struct sr_instance* sr, struct in_addr dest,
-                     struct in_addr gw, struct in_addr mask,char* if_name)
+void sr_add_rt_entry(struct sr_instance *sr, 
+                     struct in_addr      dest,
+                     struct in_addr      gw, 
+                     struct in_addr      mask,
+                     char               *if_name)
 {
     struct sr_rt* rt_walker = 0;
 
@@ -178,7 +181,7 @@ void sr_print_routing_entry(struct sr_rt* entry)
 } /* -- sr_print_routing_entry -- */
 ssize_t prefix_match(int32_t ip_lhs, int32_t ip_rhs);
 
-struct sr_rt *sr_find_rt_entry(struct sr_rt* head, int32_t ip)
+struct sr_rt *sr_find_rt_entry(struct sr_rt* head, uint32_t ip)
 {
     struct sr_rt *curr = head, *rval = NULL;
     
