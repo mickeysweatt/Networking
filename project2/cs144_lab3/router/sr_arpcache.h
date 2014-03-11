@@ -107,7 +107,7 @@ struct sr_arpreq {
     struct sr_packet *packets;  /* List of pkts waiting on this req to finish */
     struct sr_arpreq *next;
 	callback_functor(pass_handler);
-	callback_functor(fail_handlder);
+	callback_functor(fail_handler);
 };
 
 struct sr_arpcache {

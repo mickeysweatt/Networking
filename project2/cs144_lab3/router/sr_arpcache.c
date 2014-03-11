@@ -32,7 +32,7 @@ static void sr_arpcache_sweepreqs(struct sr_instance *sr);
 
 static void handle_waiting_packets(struct sr_instance *sr, 
                                    uint32_t            ip,
-                                   void (* callback) (struct sr_instance* , 
+                                   int (* callback) (struct sr_instance* , 
                                                       uint8_t * , 
                                                       unsigned int , 
                                                       char* ));
@@ -151,7 +151,7 @@ void sr_handle_arp(struct sr_instance *sr,
 
 static void handle_waiting_packets(struct sr_instance *sr, 
                                    uint32_t            ip,
-                                   void (* callback) (struct sr_instance*, 
+                                   int (* callback) (struct sr_instance*, 
                                                       uint8_t * , 
                                                       unsigned int , 
                                                       char* ))
@@ -296,6 +296,8 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
     {
         req = (struct sr_arpreq *) calloc(1, sizeof(struct sr_arpreq));
         req->ip = ip;
+        req->pass_handler = pass_handler;
+        req->fail_handler = fail_handler;
         req->next = cache->requests;
         cache->requests = req;
     }

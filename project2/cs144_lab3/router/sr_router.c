@@ -37,14 +37,10 @@ static int sr_handle_IP(struct sr_instance *sr,
 						unsigned int       len,
 						char              *interface/* lent */);
 
-static int sr_handle_ICMP((struct sr_instance *sr,
-						uint8_t           *packet/* lent */,
-						unsigned int       len,
-						char              *interface/* lent */)
-{
-	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
-	assert(0);
-}
+static int sr_handle_ICMP(struct sr_instance *sr,
+                          uint8_t           *packet/* lent */,
+                          unsigned int       len,
+                          char              *interface/* lent */);
 
  void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
@@ -291,7 +287,7 @@ static int sr_handle_IP(struct sr_instance *sr,
  *
  *---------------------------------------------------------------------*/
 
-void sr_handlepacket(struct sr_instance *sr,
+int sr_handlepacket(struct sr_instance *sr,
                      uint8_t            *packet/* lent */,
                      unsigned int        len,
                      char               *interface/* lent */)
@@ -312,7 +308,7 @@ void sr_handlepacket(struct sr_instance *sr,
   if (len < min_length) 
   {
 	fprintf(stderr, "Ethernet, length too small\n");
-    return;
+    return -1;
   }
    // TODO Check dst MAC
 
@@ -326,7 +322,7 @@ void sr_handlepacket(struct sr_instance *sr,
 		if(len < min_length)
 		{
 			fprintf(stderr, "IP, length too small\n");
-			return;
+			return -1;
 		}
 		sr_handle_IP(sr, packet, len, interface);
     } break;
@@ -338,7 +334,7 @@ void sr_handlepacket(struct sr_instance *sr,
 		if(len < min_length)
 		{
 			fprintf(stderr, "ARP, length too small");
-			return;
+			return -1;
 		}
         sr_handle_arp(sr, packet, len, interface);
     } break;
@@ -346,7 +342,17 @@ void sr_handlepacket(struct sr_instance *sr,
     {
         // FIXME
         perror("ERROR");
+        return -1;
     }
   }
+    return 0;
+}
 
+static int sr_handle_ICMP(struct sr_instance *sr,
+						uint8_t           *packet/* lent */,
+						unsigned int       len,
+						char              *interface/* lent */)
+{
+	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
+	assert(0);
 }
