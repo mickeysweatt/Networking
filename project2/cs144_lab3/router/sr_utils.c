@@ -143,7 +143,6 @@ void print_hdr_arp(uint8_t *buf) {
 
 /* Prints out all possible headers, starting from Ethernet */
 void print_hdrs(uint8_t *buf, uint32_t length) {
-  sr_icmp_response_t icmp;
   /* Ethernet */
   int minlength = sizeof(sr_ethernet_hdr_t);
   if (length < minlength) {
