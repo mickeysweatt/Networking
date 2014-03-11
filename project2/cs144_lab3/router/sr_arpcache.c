@@ -32,7 +32,7 @@ static void sr_arpcache_sweepreqs(struct sr_instance *sr);
 
 static void handle_waiting_packets(struct sr_instance *sr, 
                                    uint32_t            ip,
-                                   void (* callback) (struct sr_instance* , 
+                                   int (* callback) (struct sr_instance* , 
                                                       uint8_t * , 
                                                       unsigned int , 
                                                       char* ));
@@ -100,7 +100,7 @@ void sr_handle_arp(struct sr_instance *sr,
             Debug("===Incomming ARP Request===\n");
             print_hdrs(packet, len);
         }
-        // cache incomming informaiton as well
+        // cache incomming informaiton as well (self-learning)
         sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip);
         struct sr_if *iface = sr_get_interface(sr, iface_name);
         // construct the Ethernet Header
@@ -151,7 +151,7 @@ void sr_handle_arp(struct sr_instance *sr,
 
 static void handle_waiting_packets(struct sr_instance *sr, 
                                    uint32_t            ip,
-                                   void (* callback) (struct sr_instance*, 
+                                   int (* callback) (struct sr_instance*, 
                                                       uint8_t * , 
                                                       unsigned int , 
                                                       char* ))
@@ -268,9 +268,17 @@ struct sr_arpentry *sr_arpcache_lookup(struct sr_arpcache *cache,
    can remove the ARP request from the queue by calling sr_arpreq_destroy. */
 struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
                                        uint32_t            ip,
-                                       uint8_t            *packet,/* borrowed */
+                                       uint8_t            *packet,
                                        unsigned int        packet_len,
-                                       char               *iface)
+                                       char               *iface,
+									   int(* pass_handler)(struct sr_instance*, 
+															uint8_t * , 
+															unsigned int , 
+															char* ),
+									   int(* fail_handler) (struct sr_instance*, 
+															uint8_t * , 
+															unsigned int , 
+															char* ))
 {
     pthread_mutex_lock(&(cache->lock));
     
@@ -288,6 +296,8 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
     {
         req = (struct sr_arpreq *) calloc(1, sizeof(struct sr_arpreq));
         req->ip = ip;
+        req->pass_handler = pass_handler;
+        req->fail_handler = fail_handler;
         req->next = cache->requests;
         cache->requests = req;
     }

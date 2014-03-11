@@ -32,6 +32,16 @@
  *---------------------------------------------------------------------*/
 extern const int DEBUG;
 
+static int sr_handle_IP(struct sr_instance *sr,
+						uint8_t           *packet/* lent */,
+						unsigned int       len,
+						char              *interface/* lent */);
+
+static int sr_handle_ICMP(struct sr_instance *sr,
+                          uint8_t           *packet/* lent */,
+                          unsigned int       len,
+                          char              *interface/* lent */);
+
  void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
     /* REQUIRES */
@@ -103,15 +113,13 @@ extern const int DEBUG;
  * returns 0 or -1 depending on whether its a success or failure
  *--------------------------------------------------------------------*/
 
- int sr_handle_IP(struct sr_instance *sr,
-                   uint8_t           *packet/* lent */,
-                   unsigned int       len,
-                   char              *interface/* lent */)
+static int sr_handle_IP(struct sr_instance *sr,
+						uint8_t           *packet/* lent */,
+						unsigned int       len,
+						char              *interface/* lent */)
 {   
 	
 	if(DEBUG) Debug("*** -> Handling IP packet\n");
-	
-	
 	
 	int min_length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
 
@@ -212,9 +220,10 @@ extern const int DEBUG;
                                  rt_entry->dest.s_addr, 
                                  packet, 
                                  len, 
-                                 rt_entry->interface);
-            // because the arp request in asynchronous, we must poll to see if
-            // the request is ready
+                                 rt_entry->interface,
+								 sr_handle_IP,
+								 NULL);
+            // because the arp request in asynchronous, 
         }					
 		else
         {
@@ -278,7 +287,7 @@ extern const int DEBUG;
  *
  *---------------------------------------------------------------------*/
 
-void sr_handlepacket(struct sr_instance *sr,
+int sr_handlepacket(struct sr_instance *sr,
                      uint8_t            *packet/* lent */,
                      unsigned int        len,
                      char               *interface/* lent */)
@@ -299,7 +308,7 @@ void sr_handlepacket(struct sr_instance *sr,
   if (len < min_length) 
   {
 	fprintf(stderr, "Ethernet, length too small\n");
-    return;
+    return -1;
   }
    // TODO Check dst MAC
 
@@ -313,7 +322,7 @@ void sr_handlepacket(struct sr_instance *sr,
 		if(len < min_length)
 		{
 			fprintf(stderr, "IP, length too small\n");
-			return;
+			return -1;
 		}
 		sr_handle_IP(sr, packet, len, interface);
     } break;
@@ -325,7 +334,7 @@ void sr_handlepacket(struct sr_instance *sr,
 		if(len < min_length)
 		{
 			fprintf(stderr, "ARP, length too small");
-			return;
+			return -1;
 		}
         sr_handle_arp(sr, packet, len, interface);
     } break;
@@ -333,7 +342,17 @@ void sr_handlepacket(struct sr_instance *sr,
     {
         // FIXME
         perror("ERROR");
+        return -1;
     }
   }
+    return 0;
+}
 
+static int sr_handle_ICMP(struct sr_instance *sr,
+						uint8_t           *packet/* lent */,
+						unsigned int       len,
+						char              *interface/* lent */)
+{
+	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
+	assert(0);
 }
