@@ -225,7 +225,7 @@ static void sr_destroy_instance(struct sr_instance* sr)
     {
         sr_dump_close(sr->logfile);
     }
-
+    sr_arpcache_destroy(&sr->cache);
     /*
     fprintf(stderr,"sr_destroy_instance leaking memory\n");
     */

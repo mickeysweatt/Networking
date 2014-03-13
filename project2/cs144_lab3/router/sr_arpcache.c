@@ -239,7 +239,6 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
            {
                Debug("%s : %d - No fail handler specified\n", __FILE__, __LINE__);
            }
-           
        }
        else
        {
@@ -267,6 +266,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
                           req->packets->iface);
            req->sent = now;
            req->times_sent++;
+           free(arp_buf);
        }
        pthread_mutex_unlock(&(cache->lock));
    }
@@ -513,6 +513,18 @@ int sr_arpcache_init(struct sr_arpcache *cache)
 /* Destroys table + table lock. Returns 0 on success. */
 int sr_arpcache_destroy(struct sr_arpcache *cache) 
 {
+    while(cache->num_valid_entries > 0)
+    {
+        free(&cache->entries[0]);
+        cache->num_valid_entries--;
+    }
+    struct sr_arpreq *curr = cache->requests, *next;
+    while (curr)
+    {
+        next = curr->next;
+        free(curr);
+        curr = next;
+    }
     return pthread_mutex_destroy(    &(cache->lock))
         && pthread_mutexattr_destroy(&(cache->attr));
 }

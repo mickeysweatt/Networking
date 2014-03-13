@@ -33,6 +33,7 @@
 extern const int DEBUG;
 
 static int sr_handle_IP(struct sr_instance *sr,
+
                           uint8_t          *packet/* lent */,
                           unsigned int      len,
                           char             *interface/* lent */,
@@ -339,13 +340,13 @@ static int sr_handle_ICMP(struct sr_instance *sr,
 						char              *interface,/* lent */
                         void              *params)
 {
-//	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
-//	assert(0);
+	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
+	assert(0);
 	enum sr_icmp_type type;
 	enum sr_icmp_code code;
 	memcpy(&type, params, sizeof(type));
 	memcpy(&code, params + sizeof(type), sizeof(code));
-	sr_icmp_response_t* response = makeICMP_response(packet, type, code); 
-	return sr_send_packet(sr, (uint8_t *)response, sizeof(response), interface);
-	
+	//sr_icmp_response_t* response = makeICMP_response(packet, type, code); 
+	//return sr_send_packet(sr, (uint8_t *)response, sizeof(response), interface);
+    return -1;	
 }
