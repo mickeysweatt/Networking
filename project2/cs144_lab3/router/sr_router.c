@@ -33,15 +33,16 @@
 extern const int DEBUG;
 
 static int sr_handle_IP(struct sr_instance *sr,
-						uint8_t           *packet/* lent */,
-						unsigned int       len,
-						char              *interface/* lent */);
+                          uint8_t          *packet/* lent */,
+                          unsigned int      len,
+                          char             *interface/* lent */,
+                          void  	       *paramters);
 
 static int sr_handle_ICMP(struct sr_instance *sr,
-                          uint8_t           *packet/* lent */,
-                          unsigned int       len,
-                          char              *interface/* lent */,
-			  void  	    *paramters);
+						uint8_t           *packet/* lent */,
+						unsigned int       len,
+						char              *interface,/* lent */
+                        void              *params);                          
 
  void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
@@ -65,51 +66,6 @@ static int sr_handle_ICMP(struct sr_instance *sr,
     //sr_arpcache_dump(&(sr->cache));
 } /* -- sr_init -- */
 
-
-/*---------------------------------------------------------------------
- * Method: sr_send_IP
- *--------------------------------------------------------------------*/
-// XXX DEPRRECATE XXX
- int sr_send_IP(struct sr_instance *sr, 
-                       sr_ip_hdr_t *ip_hdr_p)
- {
-    // handle TTL
-    if(ip_hdr_p->ip_ttl == 0 || (--(ip_hdr_p->ip_ttl) == 0))
-    {
-        // send ICMP Time exceeded
-    }
-    
-    //ip_dst -> interface name
-    struct sr_rt* rt_entry = sr_find_rt_entry(sr->routing_table, 
-                                    ip_hdr_p->ip_dst);
-    if(rt_entry == NULL)
-    {
-        // send ICMP network unreachable
-    }
-    
-    //interface name -> physical addr
-    struct sr_if* if_entry = sr_get_interface(sr, 
-                                              rt_entry->interface);
-    // if there is no entry for the interface that packet specifies
-    if(if_entry == NULL)
-    {
-        return -1;
-    }
-    
-    // ip_dst -> 
-    struct sr_arpentry* arp_entry = sr_arpcache_lookup(&sr->cache, 
-                                                       ip_hdr_p->ip_dst);												   
-    if(arp_entry == NULL)
-    {
-        //send ARP request
-    }
-    
-    //change up IP header
-    //send
-    
-    return 0;
- }
-
 /*---------------------------------------------------------------------
  * Method: sr_handle_IP
  * returns 0 or -1 depending on whether its a success or failure
@@ -118,10 +74,11 @@ static int sr_handle_ICMP(struct sr_instance *sr,
 static int sr_handle_IP(struct sr_instance *sr,
 						uint8_t           *packet/* lent */,
 						unsigned int       len,
-						char              *interface/* lent */)
+						char              *interface,/* lent */
+                        void              *params)
 {   
 	
-	if(DEBUG) Debug("*** -> Handling IP packet\n");
+	if(DEBUG) { Debug("*** -> Handling IP packet\n"); }
 	
 	int min_length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
 
@@ -129,9 +86,9 @@ static int sr_handle_IP(struct sr_instance *sr,
 	sr_ethernet_hdr_t *eth_hdr_p = NULL;
 	sr_ip_hdr_t       *ip_hdr_p  = NULL;
 	eth_hdr_p                    = (sr_ethernet_hdr_t *) 
-                                              malloc(sizeof(sr_ethernet_hdr_t));
+                                               malloc(sizeof(sr_ethernet_hdr_t));
 	ip_hdr_p                     = (sr_ip_hdr_t       *) 
-                                                   malloc(sizeof(sr_ip_hdr_t));
+                                              malloc(sizeof(sr_ip_hdr_t));
 	
     // initially copy original packet into respective structures
 	memcpy(eth_hdr_p, 
@@ -156,10 +113,10 @@ static int sr_handle_IP(struct sr_instance *sr,
 	
 	if (DEBUG) 
     { 
-        Debug("Passed Checksum\n");
+        Debug("---Incomming IP Packet---\n");
+        print_hdrs(packet, len);
     }
-    Debug("---Incomming IP Packet---\n");
-    print_hdr_ip((uint8_t *)ip_hdr_p);
+    
     
 
 	// Check destination IP 
@@ -237,13 +194,16 @@ static int sr_handle_IP(struct sr_instance *sr,
         if(arp_entry == NULL)
         {
             // Send ARP request
-            sr_arpcache_queuereq(&sr->cache,
+            //<--TODO PACK PARAM WITH REAL STUFF-->
+            sr_arpcache_queuereq(sr,
+                                &sr->cache,
                                  rt_entry->dest.s_addr, 
                                  packet, 
                                  len, 
                                  rt_entry->interface,
 								 sr_handle_IP,
-								 sr_handle_ICMP);
+								 sr_handle_ICMP,
+                                 params);
             // because the arp request in asynchronous, 
         }					
 		else
@@ -266,8 +226,11 @@ static int sr_handle_IP(struct sr_instance *sr,
                            packet_out, 
                            len,
                            rt_entry->interface);
-           Debug("===Outgoing IP Packet===\n");
-           print_hdrs(packet_out, len);
+           if (DEBUG)
+           {
+               Debug("===Outgoing IP Packet===\n");
+               print_hdrs(packet_out, len);
+           }
            
         }
 	}
@@ -311,7 +274,8 @@ static int sr_handle_IP(struct sr_instance *sr,
 int sr_handlepacket(struct sr_instance *sr,
                      uint8_t            *packet/* lent */,
                      unsigned int        len,
-                     char               *interface/* lent */)
+                     char               *interface,/* lent */
+                     void               *params)
 {
   /* REQUIRES */
   assert(sr);
@@ -345,7 +309,7 @@ int sr_handlepacket(struct sr_instance *sr,
 			fprintf(stderr, "IP, length too small\n");
 			return -1;
 		}
-		sr_handle_IP(sr, packet, len, interface);
+		sr_handle_IP(sr, packet, len, interface, params);
     } break;
     case ethertype_arp:
     {
@@ -357,7 +321,7 @@ int sr_handlepacket(struct sr_instance *sr,
 			fprintf(stderr, "ARP, length too small");
 			return -1;
 		}
-        sr_handle_arp(sr, packet, len, interface);
+        sr_handle_arp(sr, packet, len, interface, params);
     } break;
     default:
     {
@@ -372,15 +336,15 @@ int sr_handlepacket(struct sr_instance *sr,
 static int sr_handle_ICMP(struct sr_instance *sr,
 						uint8_t           *packet/* lent */,
 						unsigned int       len,
-						char              *interface/* lent */,
-						void		  *parameters)
+						char              *interface,/* lent */
+                        void              *params)
 {
 //	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
 //	assert(0);
 	enum sr_icmp_type type;
 	enum sr_icmp_code code;
-	memcpy(&type, parameters, sizeof(type));
-	memcpy(&code, parameters + sizeof(type), sizeof(code));
+	memcpy(&type, params, sizeof(type));
+	memcpy(&code, params + sizeof(type), sizeof(code));
 	sr_icmp_response_t* response = makeICMP_response(packet, type, code); 
 	return sr_send_packet(sr, (uint8_t *)response, sizeof(response), interface);
 	

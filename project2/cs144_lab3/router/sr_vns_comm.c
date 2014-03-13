@@ -231,6 +231,7 @@ int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
 
     Debug("Router interfaces:\n");
     sr_print_if_list(sr);
+    fflush(stdout);
 
     return num_entries;
 } /* -- sr_handle_hwinfo -- */
@@ -454,7 +455,8 @@ int sr_read_from_server_expect(struct sr_instance* sr /* borrowed */, int expect
                     (buf+sizeof(c_packet_header)),
                     len - sizeof(c_packet_ethernet_header) +
                     sizeof(struct sr_ethernet_hdr),
-                    (char*)(buf + sizeof(c_base)));
+                    (char*)(buf + sizeof(c_base)),
+                    NULL);
 
             break;
 

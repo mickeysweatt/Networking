@@ -225,7 +225,6 @@ int sr_address_is_valid(struct sr_instance* sr, const unsigned char* address)
 
     if_walker = sr->if_list;
     
-    sr_print_if(if_walker);
     while(if_walker)
     {
         if (memcmp(if_walker->addr, address, ETHER_ADDR_LEN))
