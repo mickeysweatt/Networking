@@ -37,7 +37,7 @@ static int sr_handle_IP(struct sr_instance *sr,
                           uint8_t          *packet/* lent */,
                           unsigned int      len,
                           char             *interface/* lent */,
-                          void  	       *paramters);
+                          void  	       *params);
 
 static int sr_handle_ICMP(struct sr_instance *sr,
 						uint8_t           *packet/* lent */,
@@ -68,6 +68,18 @@ static int sr_handle_ICMP(struct sr_instance *sr,
 } /* -- sr_init -- */
 
 /*---------------------------------------------------------------------
+ * Method: sr_create_ICMP
+ *--------------------------------------------------------------------*/
+static 
+uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
+{
+    uint8_t* parameters = malloc(sizeof(enum sr_icmp_type) + sizeof(enum sr_icmp_code));
+    memcpy(parameters, &type, sizeof(type));
+    memcpy(parameters + sizeof(type), &code, sizeof(code));
+	return parameters;
+}
+
+/*---------------------------------------------------------------------
  * Method: sr_handle_IP
  * returns 0 or -1 depending on whether its a success or failure
  *--------------------------------------------------------------------*/
@@ -84,18 +96,21 @@ static int sr_handle_IP(struct sr_instance *sr,
 	int min_length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
 
 	// FIXME Free these structures
-	sr_ethernet_hdr_t *eth_hdr_p = NULL;
-	sr_ip_hdr_t       *ip_hdr_p  = NULL;
-	eth_hdr_p                    = (sr_ethernet_hdr_t *) 
-                                               malloc(sizeof(sr_ethernet_hdr_t));
-	ip_hdr_p                     = (sr_ip_hdr_t       *) 
-                                              malloc(sizeof(sr_ip_hdr_t));
+	sr_ethernet_hdr_t  *eth_hdr_p      = NULL;
+	sr_ip_hdr_t        *ip_hdr_p       = NULL;
+    uint8_t            *packet_out     = NULL;
+    struct sr_arpentry *arp_entry      = NULL;
+    uint8_t            *parameters     = NULL;
+    
+	eth_hdr_p                      = (sr_ethernet_hdr_t *) 
+                                              malloc(sizeof(sr_ethernet_hdr_t));
+	ip_hdr_p                       = (sr_ip_hdr_t       *) 
+                                                   malloc(sizeof(sr_ip_hdr_t));
 	
-    // initially copy original packet into respective structures
+    // Initially copy original packet into respective structures
 	memcpy(eth_hdr_p, 
            packet, 
            sizeof(sr_ethernet_hdr_t));
-	
     memcpy(ip_hdr_p,
            packet + sizeof(sr_ethernet_hdr_t),
            sizeof(sr_ip_hdr_t));	
@@ -111,13 +126,12 @@ static int sr_handle_IP(struct sr_instance *sr,
 		fprintf(stderr, "Checksum error in packet");
 		return -1;
 	}
-	
+
 	if (DEBUG) 
     { 
         Debug("---Incomming IP Packet---\n");
         print_hdrs(packet, len);
     }
-    
     
 
 	// Check destination IP 
@@ -139,33 +153,30 @@ static int sr_handle_IP(struct sr_instance *sr,
                 // FIXME
                 return -1;
             }
-	    uint8_t* parameters = malloc(sizeof(enum sr_icmp_type) + sizeof(enum sr_icmp_code));
-	    enum sr_icmp_type type = icmp_type_echo_reply;
-	    enum sr_icmp_code code = icmp_code_echo_reply;
-	    memcpy(parameters, &type, sizeof(type));
-	    memcpy(parameters + sizeof(type), &code, sizeof(code));
-	    sr_handle_ICMP(sr, packet, len, interface, (void *)parameters); 
-	    
             // TODO: ICMP -> ICMP processing (e.g., echo request, echo reply)
+            parameters = sr_create_ICMP_params(icmp_type_echo_reply,
+                                               icmp_code_echo_reply);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters); 
           } break;
           default:
 		  {
-				// UDP, TCP -> ICMP port unreachable
-				uint8_t* parameters = malloc(sizeof(enum sr_icmp_type) + sizeof(enum sr_icmp_code));
-            			enum sr_icmp_type type = icmp_type_destination_port_unreachable;
-            			enum sr_icmp_code code = icmp_code_destination_port_unreachable;
-            			memcpy(parameters, &type, sizeof(type));
-            			memcpy(parameters + sizeof(type), &code, sizeof(code));
-            			sr_handle_ICMP(sr,  packet, len, interface, (void *)parameters);
+            parameters = 
+                sr_create_ICMP_params(icmp_type_destination_port_unreachable,
+                                      icmp_code_destination_port_unreachable);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
           }
 		}
     }        
     else
 	{
-		// Decrease TTL. If TTL = 0: ICMP Time exceed 
-		if(0 == ip_hdr_p->ip_ttl || 0 == (--(ip_hdr_p->ip_ttl)))
+		// FIXME Check TTL 
+		if(0 == ip_hdr_p->ip_ttl || 1 == ip_hdr_p->ip_ttl)
 		{
-			// TODO validate regular sorts of packets
+			parameters = 
+                  sr_create_ICMP_params(icmp_type_TLL_expired,
+                                        icmp_code_TLL_expired);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            
 		}
 		
 		// Routing table lookup
@@ -174,12 +185,10 @@ static int sr_handle_IP(struct sr_instance *sr,
 		if(NULL == rt_entry)
 		{
 			// Send ICMP network unreachable
-			uint8_t* parameters = malloc(sizeof(enum sr_icmp_type) + sizeof(enum sr_icmp_code));
-                        enum sr_icmp_type type = icmp_type_destination_network_unreachable;
-                        enum sr_icmp_code code = icmp_code_destination_network_unreachable;
-                        memcpy(parameters, &type, sizeof(type));
-                        memcpy(parameters + sizeof(type), &code, sizeof(code));
-                        sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            parameters = 
+                  sr_create_ICMP_params(icmp_type_destination_port_unreachable,
+                                        icmp_code_destination_port_unreachable);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
 		}
 		
         // Translate interface name to phys addr
@@ -190,11 +199,15 @@ static int sr_handle_IP(struct sr_instance *sr,
         }
 			
         // Translate destination IP to next hop IP
-        struct sr_arpentry* arp_entry = 
-                                      sr_arpcache_lookup(&sr->cache, 
-                                                         rt_entry->dest.s_addr);
+        arp_entry = sr_arpcache_lookup(&sr->cache, rt_entry->dest.s_addr);
+        
         if(arp_entry == NULL)
         {
+            // Initialize fail parameters for sr_arpcache_queuereq
+            parameters = 
+                  sr_create_ICMP_params(icmp_type_destination_port_unreachable,
+                                        icmp_code_destination_port_unreachable);
+                                        
             // Send ARP request
             //<--TODO PACK PARAM WITH REAL STUFF-->
             
@@ -206,18 +219,19 @@ static int sr_handle_IP(struct sr_instance *sr,
                                  rt_entry->interface,
 								 sr_handle_IP,
 								 sr_handle_ICMP,
-                                 params);
-            // because the arp request in asynchronous, 
+                                 parameters);
         }					
 		else
         {
+            // Decrement TTL
+            ip_hdr_p->ip_ttl--;
             // Changing source and destination mac for next hop
             memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);
             memcpy(eth_hdr_p->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
             // Recalc cksum
             ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
             // Make the outgoing packet
-            uint8_t *packet_out = (uint8_t *) malloc(len);
+            packet_out = (uint8_t *) malloc(len);
             memcpy(packet_out, eth_hdr_p, sizeof(sr_ethernet_hdr_t));
             memcpy(packet_out + sizeof(sr_ethernet_hdr_t), 
                    ip_hdr_p, 
@@ -234,24 +248,9 @@ static int sr_handle_IP(struct sr_instance *sr,
                Debug("===Outgoing IP Packet===\n");
                print_hdrs(packet_out, len);
            }
-           
         }
 	}
-	
-/*
-	// routing table look-up
 
-	// Routing entry is not found -> ICMP network unreachable 
-
-	// Routing entry found, get the IP of next hop, look up in ARP table 
-
-	// No ARP entry, send ARP request
-
-	// If get ARP reply -> process IP packet relying on it. 
-
-	// Found ARP entry, use it as dst MAC address, use outgoing interface 
-	// MAC as src MAC address, send IP packet
-*/
 	return 0;
 }
 
@@ -275,10 +274,10 @@ static int sr_handle_IP(struct sr_instance *sr,
  *---------------------------------------------------------------------*/
 
 int sr_handlepacket(struct sr_instance *sr,
-                     uint8_t            *packet/* lent */,
-                     unsigned int        len,
-                     char               *interface,/* lent */
-                     void               *params)
+                     uint8_t           *packet/* lent */,
+                     unsigned int       len,
+                     char              *interface,/* lent */
+                     void              *params)
 {
   /* REQUIRES */
   assert(sr);
@@ -342,7 +341,6 @@ static int sr_handle_ICMP(struct sr_instance *sr,
 						char              *interface,/* lent */
                         void              *parameters)
 {
-	printf("%s\n", "WHATSUPPP");
 	enum sr_icmp_type type;
 	enum sr_icmp_code code;
 	memcpy(&type, parameters, sizeof(type));
