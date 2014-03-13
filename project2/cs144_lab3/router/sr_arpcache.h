@@ -120,7 +120,7 @@ struct sr_arpcache {
     size_t            num_valid_entries;
 };
 
-sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
+sr_icmp_response_t* makeICMP_response(struct sr_instance *sr, const char* interface, uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order. 
    You must free the returned structure if it is not NULL. */
