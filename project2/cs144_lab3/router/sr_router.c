@@ -40,7 +40,8 @@ static int sr_handle_IP(struct sr_instance *sr,
 static int sr_handle_ICMP(struct sr_instance *sr,
                           uint8_t           *packet/* lent */,
                           unsigned int       len,
-                          char              *interface/* lent */);
+                          char              *interface/* lent */,
+			  void  	    *paramters);
 
  void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
@@ -68,6 +69,7 @@ static int sr_handle_ICMP(struct sr_instance *sr,
 /*---------------------------------------------------------------------
  * Method: sr_send_IP
  *--------------------------------------------------------------------*/
+// XXX DEPRRECATE XXX
  int sr_send_IP(struct sr_instance *sr, 
                        sr_ip_hdr_t *ip_hdr_p)
  {
@@ -178,11 +180,24 @@ static int sr_handle_IP(struct sr_instance *sr,
                 // FIXME
                 return -1;
             }
+	    uint8_t* parameters = malloc(sizeof(enum sr_icmp_type) + sizeof(enum sr_icmp_code));
+	    enum sr_icmp_type type = icmp_type_echo_reply;
+	    enum sr_icmp_code code = icmp_code_echo_reply;
+	    memcpy(parameters, &type, sizeof(type));
+	    memcpy(parameters + sizeof(type), &code, sizeof(code));
+	    sr_handle_ICMP(sr, packet, len, interface, (void *)parameters); 
+	    
             // TODO: ICMP -> ICMP processing (e.g., echo request, echo reply)
           } break;
           default:
 		  {
 				// UDP, TCP -> ICMP port unreachable
+				uint8_t* parameters = malloc(sizeof(enum sr_icmp_type) + sizeof(enum sr_icmp_code));
+            			enum sr_icmp_type type = icmp_type_destination_port_unreachable;
+            			enum sr_icmp_code code = icmp_code_destination_port_unreachable;
+            			memcpy(parameters, &type, sizeof(type));
+            			memcpy(parameters + sizeof(type), &code, sizeof(code));
+            			sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
           }
 		}
     }        
@@ -200,6 +215,12 @@ static int sr_handle_IP(struct sr_instance *sr,
 		if(NULL == rt_entry)
 		{
 			// Send ICMP network unreachable
+			uint8_t* parameters = malloc(sizeof(enum sr_icmp_type) + sizeof(enum sr_icmp_code));
+                        enum sr_icmp_type type = icmp_type_destination_network_unreachable;
+                        enum sr_icmp_code code = icmp_code_destination_network_unreachable;
+                        memcpy(parameters, &type, sizeof(type));
+                        memcpy(parameters + sizeof(type), &code, sizeof(code));
+                        sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
 		}
 		
         // Translate interface name to phys addr
@@ -351,8 +372,16 @@ int sr_handlepacket(struct sr_instance *sr,
 static int sr_handle_ICMP(struct sr_instance *sr,
 						uint8_t           *packet/* lent */,
 						unsigned int       len,
-						char              *interface/* lent */)
+						char              *interface/* lent */,
+						void		  *parameters)
 {
-	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
-	assert(0);
+//	fprintf(stderr, "%s:%d - NOT IMPLEMENTED!EXITING\n",__FILE__, __LINE__);
+//	assert(0);
+	enum sr_icmp_type type;
+	enum sr_icmp_code code;
+	memcpy(&type, parameters, sizeof(type));
+	memcpy(&code, parameters + sizeof(type), sizeof(code));
+	sr_icmp_response_t* response = makeICMP_response(packet, type, code); 
+	return sr_send_packet(sr, (uint8_t *)response, sizeof(response), interface);
+	
 }
