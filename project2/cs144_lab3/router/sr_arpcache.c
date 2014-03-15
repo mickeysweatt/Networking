@@ -28,6 +28,7 @@ static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
                                              
 static void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
+
 static void sr_arpcache_sweepreqs(struct sr_instance *sr);
 
 static void handle_waiting_packets(struct sr_instance *sr, 
@@ -85,6 +86,7 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
     memset(&hdr->ar_tha, 0, ETHER_ADDR_LEN);
     return hdr;
 }
+
 
 
 void sr_handle_arp(struct sr_instance *sr, 
@@ -516,7 +518,7 @@ int sr_arpcache_destroy(struct sr_arpcache *cache)
 {
     while(cache->num_valid_entries > 0)
     {
-        free(&cache->entries[0]);
+        //free(&cache->entries[0]);
         cache->num_valid_entries--;
     }
     struct sr_arpreq *curr = cache->requests, *next;
