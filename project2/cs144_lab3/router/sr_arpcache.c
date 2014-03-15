@@ -188,7 +188,7 @@ struct sr_arpreq* find_request_for_ip(struct sr_arpcache *cache,
 }
 
 static void handle_waiting_packets(struct sr_instance *sr,
-                                   struct sr_arpreq * curr_req,
+                                   struct sr_arpreq   *curr_req,
                                    int (* callback) (struct sr_instance* , 
                                                       uint8_t * , 
                                                       unsigned int , 
@@ -212,6 +212,7 @@ static void handle_waiting_packets(struct sr_instance *sr,
         fprintf(stderr, "%s:%d - No packets handled\n",__FILE__, __LINE__);
         return;
     }
+
     pthread_mutex_unlock(&(sr->cache.lock));
     sr_arpreq_destroy(&sr->cache, curr_req);
     
