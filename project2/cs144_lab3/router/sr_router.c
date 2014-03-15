@@ -22,7 +22,7 @@
 #include <sr_protocol.h>
 #include <sr_arpcache.h>
 #include <sr_utils.h>
-
+#include <sr_icmp.h>
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
  * Scope:  Global
@@ -38,12 +38,6 @@ static int sr_handle_IP(struct sr_instance *sr,
                           unsigned int      len,
                           char             *interface/* lent */,
                           void  	       *params);
-
-static int sr_handle_ICMP(struct sr_instance *sr,
-						uint8_t           *packet/* lent */,
-						unsigned int       len,
-						char              *interface,/* lent */
-                        void              *params);                          
 
  void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
@@ -153,6 +147,7 @@ static int sr_handle_IP(struct sr_instance *sr,
                 // FIXME
                 return -1;
             }
+	    printf("%s\n", "ROHAN CHIALIA IS THE BEST");
             // TODO: ICMP -> ICMP processing (e.g., echo request, echo reply)
             parameters = sr_create_ICMP_params(icmp_type_echo_reply,
                                                icmp_code_echo_reply);
@@ -335,7 +330,7 @@ int sr_handlepacket(struct sr_instance *sr,
     return 0;
 }
 
-static int sr_handle_ICMP(struct sr_instance *sr,
+int sr_handle_ICMP(struct sr_instance *sr,
 						uint8_t           *packet/* lent */,
 						unsigned int       len,
 						char              *interface,/* lent */
@@ -346,6 +341,11 @@ static int sr_handle_ICMP(struct sr_instance *sr,
 	memcpy(&type, parameters, sizeof(type));
 	memcpy(&code, parameters + sizeof(type), sizeof(code));
 	sr_icmp_response_t* response = makeICMP_response(sr, interface, packet, type, code); 
+	if (DEBUG)
+	{
+		fprintf(stderr, "===OUTGOING ICMP RESPONSE===\n");
+		print_hdrs(response, len);
+	}
 	return sr_send_packet(sr, (uint8_t *)response, sizeof(response), interface);
 	
 }
