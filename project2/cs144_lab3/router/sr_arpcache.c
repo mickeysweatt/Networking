@@ -107,13 +107,8 @@ void sr_handle_arp(struct sr_instance *sr,
     //print_hdrs(packet, len);
     if (arp_op_request == ntohs(arp_hdr->ar_op))
     {   
-        if (DEBUG)
-        {
-            Debug("===Incomming ARP Request===\n");
-            print_hdrs(packet, len);
-        }
         // cache incomming informaiton as well (self-learning)
-        if (0 != sr_arpcache_lookup(&sr->cache, arp_hdr->ar_sip))
+        if (0 == sr_arpcache_lookup(&sr->cache, arp_hdr->ar_sip))
         {
             sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip);
             printf("AFTER SELF LEARNED ARP\n");
@@ -148,11 +143,6 @@ void sr_handle_arp(struct sr_instance *sr,
     // If it is reply -> ARP reply processing 
     else if (arp_op_reply == ntohs(arp_hdr->ar_op))
     {
-        if (DEBUG)
-        {
-            Debug("===Incomming ARP Response===\n");
-            print_hdrs(packet, len);
-        }
         if (sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip))
         {
             if (DEBUG) { Debug("Updated arp cache entry\n") };
@@ -518,7 +508,7 @@ int sr_arpcache_destroy(struct sr_arpcache *cache)
 {
     while(cache->num_valid_entries > 0)
     {
-        //free(&cache->entries[0]);
+        cache->entries[0].valid = 0;
         cache->num_valid_entries--;
     }
     struct sr_arpreq *curr = cache->requests, *next;

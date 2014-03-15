@@ -119,14 +119,7 @@ static int sr_handle_IP(struct sr_instance *sr,
 	{
 		fprintf(stderr, "Checksum error in packet");
 		return -1;
-	}
-
-	if (DEBUG) 
-    { 
-        Debug("---Incomming IP Packet---\n");
-        print_hdrs(packet, len);
-    }
-    
+	}    
 
 	// Check destination IP 
 	// If destined to router, what is the protocol field in IP header? 
@@ -147,7 +140,6 @@ static int sr_handle_IP(struct sr_instance *sr,
                 // FIXME
                 return -1;
             }
-	    printf("%s\n", "ROHAN CHIALIA IS THE BEST");
             // TODO: ICMP -> ICMP processing (e.g., echo request, echo reply)
             parameters = sr_create_ICMP_params(icmp_type_echo_reply,
                                                icmp_code_echo_reply);
@@ -292,8 +284,12 @@ int sr_handlepacket(struct sr_instance *sr,
 	fprintf(stderr, "Ethernet, length too small\n");
     return -1;
   }
-   // TODO Check dst MAC
-
+   // Output packet
+   if (DEBUG)
+   {    
+        fprintf(stderr, "===Incoming Packet===\n");
+        print_hdrs(packet, len);
+    }
   // Check the type of the ethenet packet
   switch(ethertype(packet))
   {
@@ -341,11 +337,22 @@ int sr_handle_ICMP(struct sr_instance *sr,
 	memcpy(&type, parameters, sizeof(type));
 	memcpy(&code, parameters + sizeof(type), sizeof(code));
 	sr_icmp_response_t* response = makeICMP_response(sr, interface, packet, type, code); 
-	if (DEBUG)
-	{
-		fprintf(stderr, "===OUTGOING ICMP RESPONSE===\n");
-		print_hdrs(response, len);
-	}
-	return sr_send_packet(sr, (uint8_t *)response, sizeof(response), interface);
+
+    if (!response)
+    {
+        return -1;
+    }
+    else
+    {
+        if (DEBUG)
+        {
+            fprintf(stderr, "===OUTGOING ICMP RESPONSE===\n");
+            print_hdrs(response, len);
+        }
+        return sr_send_packet(sr, 
+                            (uint8_t *)response,
+                            sizeof(sr_icmp_response_t), 
+                            interface);
+    }
 	
 }
