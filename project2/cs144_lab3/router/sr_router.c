@@ -336,7 +336,11 @@ int sr_handle_ICMP(struct sr_instance *sr,
 	enum sr_icmp_code code;
 	memcpy(&type, parameters, sizeof(type));
 	memcpy(&code, parameters + sizeof(type), sizeof(code));
-	sr_icmp_response_t* response = makeICMP_response(sr, interface, packet, type, code); 
+	sr_icmp_response_t* response = makeICMP_response(sr, 
+                                                     interface, 
+                                                     packet,
+                                                     type, 
+                                                     code); 
 
     if (!response)
     {
