@@ -82,7 +82,6 @@
 
 struct sr_instance;
 
-struct sr_icmp_response;
 
 struct sr_packet {
     uint8_t *buf;               /* A raw Ethernet frame, presumably with the dest MAC empty */
@@ -120,7 +119,6 @@ struct sr_arpcache {
     size_t            num_valid_entries;
 };
 
-sr_icmp_response_t* makeICMP_response(uint8_t* buf, enum sr_icmp_type t1, enum sr_icmp_code c1);
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order. 
    You must free the returned structure if it is not NULL. */

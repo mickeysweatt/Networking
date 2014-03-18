@@ -146,14 +146,6 @@ struct sr_ethernet_hdr
 } __attribute__ ((packed)) ;
 typedef struct sr_ethernet_hdr sr_ethernet_hdr_t;
 
-struct sr_icmp_response
-{
-   sr_ethernet_hdr_t* eth;
-   sr_ip_hdr_t* ip;             /* IP header */
-   sr_icmp_t3_hdr_t* s;         /* ICMP header */
-} __attribute__ ((packed)) ;
-typedef struct sr_icmp_response sr_icmp_response_t;
-
 enum sr_icmp_type {
    icmp_type_echo_reply = 0,
    icmp_type_destination_network_unreachable = 3,

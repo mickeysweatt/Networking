@@ -28,6 +28,7 @@ static sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
                                              
 static void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
 
+
 static void sr_arpcache_sweepreqs(struct sr_instance *sr);
 
 static void handle_waiting_packets(struct sr_instance *sr, 
@@ -87,6 +88,7 @@ sr_arp_hdr_t* sr_arp_hdr_init_request(struct sr_instance *sr,
 }
 
 
+
 void sr_handle_arp(struct sr_instance *sr, 
                    uint8_t            *packet/* lent */,
                    unsigned int        len,
@@ -105,13 +107,8 @@ void sr_handle_arp(struct sr_instance *sr,
     //print_hdrs(packet, len);
     if (arp_op_request == ntohs(arp_hdr->ar_op))
     {   
-        if (DEBUG)
-        {
-            Debug("===Incomming ARP Request===\n");
-            print_hdrs(packet, len);
-        }
         // cache incomming informaiton as well (self-learning)
-        if (0 != sr_arpcache_lookup(&sr->cache, arp_hdr->ar_sip))
+        if (0 == sr_arpcache_lookup(&sr->cache, arp_hdr->ar_sip))
         {
             sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip);
             printf("AFTER SELF LEARNED ARP\n");
@@ -146,11 +143,6 @@ void sr_handle_arp(struct sr_instance *sr,
     // If it is reply -> ARP reply processing 
     else if (arp_op_reply == ntohs(arp_hdr->ar_op))
     {
-        if (DEBUG)
-        {
-            Debug("===Incomming ARP Response===\n");
-            print_hdrs(packet, len);
-        }
         if (sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip))
         {
             if (DEBUG) { Debug("Updated arp cache entry\n") };
@@ -188,7 +180,7 @@ struct sr_arpreq* find_request_for_ip(struct sr_arpcache *cache,
 }
 
 static void handle_waiting_packets(struct sr_instance *sr,
-                                   struct sr_arpreq * curr_req,
+                                   struct sr_arpreq   *curr_req,
                                    int (* callback) (struct sr_instance* , 
                                                       uint8_t * , 
                                                       unsigned int , 
@@ -212,6 +204,7 @@ static void handle_waiting_packets(struct sr_instance *sr,
         fprintf(stderr, "%s:%d - No packets handled\n",__FILE__, __LINE__);
         return;
     }
+
     pthread_mutex_unlock(&(sr->cache.lock));
     sr_arpreq_destroy(&sr->cache, curr_req);
     
@@ -379,7 +372,7 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_instance *sr,
 /* This method performs two functions:
    1) Looks up this IP in the request queue. If it is found, returns a pointer
       to the sr_arpreq with this IP. Otherwise, returns NULL.
-   2) Inserts this IP to Msr_arpcache_insertAC mapping in the cache, and marks it valid. */
+   2) Inserts this IP to MAC mapping in the cache, and marks it valid. */
 struct sr_arpreq *sr_arpcache_insert(struct sr_arpcache *cache,
                                      unsigned char      *mac,
                                      uint32_t            ip)
@@ -394,7 +387,7 @@ struct sr_arpreq *sr_arpcache_insert(struct sr_arpcache *cache,
             } 
             else {
                 next = req->next;
-                cache->requests = next;
+                //cache->requests = next;
             }
             
             break;
@@ -515,7 +508,7 @@ int sr_arpcache_destroy(struct sr_arpcache *cache)
 {
     while(cache->num_valid_entries > 0)
     {
-        free(&cache->entries[0]);
+        cache->entries[0].valid = 0;
         cache->num_valid_entries--;
     }
     struct sr_arpreq *curr = cache->requests, *next;

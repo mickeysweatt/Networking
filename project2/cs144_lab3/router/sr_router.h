@@ -10,7 +10,7 @@
 #define SR_ROUTER_H
 
 #include <sr_arpcache.h>
-
+#include <sr_icmp.h>
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <stdio.h>
@@ -79,5 +79,14 @@ void sr_add_interface(struct sr_instance* , const char* );
 void sr_set_ether_ip(struct sr_instance* , uint32_t );
 void sr_set_ether_addr(struct sr_instance* , const unsigned char* );
 void sr_print_if_list(struct sr_instance* );
+
+int sr_handle_ICMP(struct sr_instance *sr,
+                                                uint8_t           *packet/* lent */,
+                                                unsigned int       len,
+                                                char              *interface,/* lent */
+                        void              *params);
+
+
+
 
 #endif /* SR_ROUTER_H */

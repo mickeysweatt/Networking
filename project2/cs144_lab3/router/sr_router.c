@@ -22,7 +22,7 @@
 #include <sr_protocol.h>
 #include <sr_arpcache.h>
 #include <sr_utils.h>
-
+#include <sr_icmp.h>
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
  * Scope:  Global
@@ -38,12 +38,6 @@ static int sr_handle_IP(struct sr_instance *sr,
                           unsigned int      len,
                           char             *interface/* lent */,
                           void  	       *params);
-
-static int sr_handle_ICMP(struct sr_instance *sr,
-						uint8_t           *packet/* lent */,
-						unsigned int       len,
-						char              *interface,/* lent */
-                        void              *params);                          
 
  void sr_init(struct sr_instance* sr, const char rtable_file[])
 {
@@ -125,17 +119,11 @@ static int sr_handle_IP(struct sr_instance *sr,
 	{
 		fprintf(stderr, "Checksum error in packet");
 		return -1;
-	}
-
-	if (DEBUG) 
-    { 
-        Debug("---Incomming IP Packet---\n");
-        print_hdrs(packet, len);
-    }
-    
+	}    
 
 	// Check destination IP 
 	// If destined to router, what is the protocol field in IP header? 
+	
 	if(ip_hdr_p->ip_dst == sr->router_ip.s_addr)
 	{
 		switch(ip_hdr_p->ip_p) 
@@ -159,7 +147,6 @@ static int sr_handle_IP(struct sr_instance *sr,
           } break;
           default:
 		  {
-            // UDP, TCP -> ICMP port unreachable
             parameters = 
                 sr_create_ICMP_params(icmp_type_destination_port_unreachable,
                                       icmp_code_destination_port_unreachable);
@@ -210,6 +197,7 @@ static int sr_handle_IP(struct sr_instance *sr,
                                         
             // Send ARP request
             //<--TODO PACK PARAM WITH REAL STUFF-->
+            
             sr_arpcache_queuereq(sr,
                                 &sr->cache,
                                  rt_entry->dest.s_addr, 
@@ -309,8 +297,12 @@ int sr_handlepacket(struct sr_instance *sr,
 	fprintf(stderr, "Ethernet, length too small\n");
     return -1;
   }
-   // TODO Check dst MAC
-
+   // Output packet
+   // if (DEBUG)
+   // {    
+        fprintf(stderr, "===Incoming Packet===\n");
+        print_hdrs(packet, len);
+    // }
   // Check the type of the ethenet packet
   switch(ethertype(packet))
   {
@@ -347,17 +339,37 @@ int sr_handlepacket(struct sr_instance *sr,
     return 0;
 }
 
-static int sr_handle_ICMP(struct sr_instance *sr,
+int sr_handle_ICMP(struct sr_instance *sr,
 						uint8_t           *packet/* lent */,
 						unsigned int       len,
 						char              *interface,/* lent */
-                        void              *params)
+                        void              *parameters)
 {
 	enum sr_icmp_type type;
 	enum sr_icmp_code code;
-	memcpy(&type, params, sizeof(type));
-	memcpy(&code, params + sizeof(type), sizeof(code));
-	//sr_icmp_response_t* response = makeICMP_response(packet, type, code); 
-	//return sr_send_packet(sr, (uint8_t *)response, sizeof(response), interface);
-    return -1;	
+	memcpy(&type, parameters, sizeof(type));
+	memcpy(&code, parameters + sizeof(type), sizeof(code));
+	sr_icmp_response_t* response = makeICMP_response(sr, 
+                                                     interface, 
+                                                     packet,
+                                                     type, 
+                                                     code); 
+
+    if (!response)
+    {
+        return -1;
+    }
+    else
+    {
+        // if (DEBUG)
+        // {
+            fprintf(stderr, "===OUTGOING ICMP RESPONSE===\n");
+            print_hdrs(response, len);
+        // }
+        return sr_send_packet(sr, 
+                            (uint8_t *)response,
+                            sizeof(sr_icmp_response_t), 
+                            interface);
+    }
+	
 }
