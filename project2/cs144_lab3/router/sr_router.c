@@ -285,11 +285,11 @@ int sr_handlepacket(struct sr_instance *sr,
     return -1;
   }
    // Output packet
-   if (DEBUG)
-   {    
+   // if (DEBUG)
+   // {    
         fprintf(stderr, "===Incoming Packet===\n");
         print_hdrs(packet, len);
-    }
+    // }
   // Check the type of the ethenet packet
   switch(ethertype(packet))
   {
@@ -348,11 +348,11 @@ int sr_handle_ICMP(struct sr_instance *sr,
     }
     else
     {
-        if (DEBUG)
-        {
+        // if (DEBUG)
+        // {
             fprintf(stderr, "===OUTGOING ICMP RESPONSE===\n");
             print_hdrs(response, len);
-        }
+        // }
         return sr_send_packet(sr, 
                             (uint8_t *)response,
                             sizeof(sr_icmp_response_t), 
