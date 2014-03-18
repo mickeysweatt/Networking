@@ -105,7 +105,7 @@ static int sr_handle_IP(struct sr_instance *sr,
 	eth_hdr_p                      = (sr_ethernet_hdr_t *) 
                                               malloc(sizeof(sr_ethernet_hdr_t));
 	ip_hdr_p                       = (sr_ip_hdr_t       *) 
-                                                   malloc(sizeof(sr_ip_hdr_t));
+                                              malloc(sizeof(sr_ip_hdr_t));
 	
     // Initially copy original packet into respective structures
 	memcpy(eth_hdr_p, 
@@ -249,6 +249,19 @@ static int sr_handle_IP(struct sr_instance *sr,
            }
         }
 	}
+    
+    // Free all allocated data
+    if(eth_hdr_p)
+        free(eth_hdr_p);
+    if(ip_hdr_p)
+        free(ip_hdr_p);
+    if(packet_out)
+        free(packet_out);
+    if(arp_entry)
+        free(arp_entry);        
+    if(parameters)
+        free(parameters);
+    
 
 	return 0;
 }
