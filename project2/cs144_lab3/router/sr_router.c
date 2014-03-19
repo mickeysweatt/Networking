@@ -108,7 +108,14 @@ static int sr_handle_IP(struct sr_instance *sr,
     memcpy(ip_hdr_p,
            packet + sizeof(sr_ethernet_hdr_t),
            sizeof(sr_ip_hdr_t));	
-
+   // cache incomming informaiton as well (self-learning)
+   
+    if (0 == sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_src))
+    {
+        sr_arpcache_insert(&sr->cache, eth_hdr_p->ether_shost, ip_hdr_p->ip_src);
+        printf("AFTER SELF LEARNED ARP IN IP\n");
+        sr_arpcache_dump(&sr->cache);
+    }
 	// Check if checksum is correct for packet
 	uint16_t expected_cksum         = ip_hdr_p->ip_sum;
 	ip_hdr_p->ip_sum                = 0;
@@ -143,14 +150,14 @@ static int sr_handle_IP(struct sr_instance *sr,
             // TODO: ICMP -> ICMP processing (e.g., echo request, echo reply)
             parameters = sr_create_ICMP_params(icmp_type_echo_reply,
                                                icmp_code_echo_reply);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters); 
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);return 0; 
           } break;
           default:
 		  {
             parameters = 
                 sr_create_ICMP_params(icmp_type_destination_port_unreachable,
                                       icmp_code_destination_port_unreachable);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);return 0;
           }
 		}
     }        
@@ -159,10 +166,13 @@ static int sr_handle_IP(struct sr_instance *sr,
 		// FIXME Check TTL 
 		if(0 == ip_hdr_p->ip_ttl || 1 == ip_hdr_p->ip_ttl)
 		{
-			parameters = 
+            ip_hdr_p->ip_ttl--;
+            ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
+            parameters = 
                   sr_create_ICMP_params(icmp_type_TLL_expired,
                                         icmp_code_TLL_expired);
             sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            return 0;
             
 		}
 		
@@ -175,7 +185,7 @@ static int sr_handle_IP(struct sr_instance *sr,
             parameters = 
                   sr_create_ICMP_params(icmp_type_destination_port_unreachable,
                                         icmp_code_destination_port_unreachable);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);return 0;
 		}
 		
         // Translate interface name to phys addr
@@ -216,6 +226,7 @@ static int sr_handle_IP(struct sr_instance *sr,
             memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);
             memcpy(eth_hdr_p->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
             // Recalc cksum
+            ip_hdr_p->ip_tos = 0;
             ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
             // Make the outgoing packet
             packet_out = (uint8_t *) malloc(len);
@@ -302,6 +313,7 @@ int sr_handlepacket(struct sr_instance *sr,
 			fprintf(stderr, "IP, length too small\n");
 			return -1;
 		}
+        
 		sr_handle_IP(sr, packet, len, interface, params);
     } break;
     case ethertype_arp:
@@ -348,11 +360,11 @@ int sr_handle_ICMP(struct sr_instance *sr,
     }
     else
     {
-        // if (DEBUG)
-        // {
-            fprintf(stderr, "===OUTGOING ICMP RESPONSE===\n");
+        if (DEBUG)
+        {
+            Debug("===OUTGOING ICMP RESPONSE===\n");
             print_hdrs(response, len);
-        // }
+        }
         return sr_send_packet(sr, 
                             (uint8_t *)response,
                             sizeof(sr_icmp_response_t), 

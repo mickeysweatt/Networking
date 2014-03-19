@@ -35,7 +35,7 @@
 
 extern char* optarg;
 
-const int DEBUG = 0;
+const int DEBUG = 1;
 
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     unsigned int topo = DEFAULT_TOPO;
     char *logfile = 0;
     struct sr_instance sr;
-
+    srand(time(NULL));
     printf("Using %s\n", VERSION_INFO);
 
     while ((c = getopt(argc, argv, "hs:v:p:u:t:r:l:T:")) != EOF)
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
     sr_print_routing_table(&sr);
     /* -- whizbang main loop ;-) */
     while( sr_read_from_server(&sr) == 1);
-    sr_destroy_instance(&sr);
+    //sr_destroy_instance(&sr);
 
     return 0;
 }/* -- main -- */
