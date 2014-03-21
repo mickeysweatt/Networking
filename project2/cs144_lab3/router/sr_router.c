@@ -99,7 +99,7 @@ static int sr_handle_IP(struct sr_instance *sr,
 	eth_hdr_p                      = (sr_ethernet_hdr_t *) 
                                               malloc(sizeof(sr_ethernet_hdr_t));
 	ip_hdr_p                       = (sr_ip_hdr_t       *) 
-                                                   malloc(sizeof(sr_ip_hdr_t));
+                                              malloc(sizeof(sr_ip_hdr_t));
 	
     // Initially copy original packet into respective structures
 	memcpy(eth_hdr_p, 
@@ -183,9 +183,10 @@ static int sr_handle_IP(struct sr_instance *sr,
 		{
 			// Send ICMP network unreachable
             parameters = 
-                  sr_create_ICMP_params(icmp_type_destination_port_unreachable,
-                                        icmp_code_destination_port_unreachable);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);return 0;
+                  sr_create_ICMP_params(icmp_type_destination_network_unreachable,
+                                        icmp_code_destination_network_unreachable);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            return 0;
 		}
 		
         // Translate interface name to phys addr
@@ -202,8 +203,8 @@ static int sr_handle_IP(struct sr_instance *sr,
         {
             // Initialize fail parameters for sr_arpcache_queuereq
             parameters = 
-                  sr_create_ICMP_params(icmp_type_destination_port_unreachable,
-                                        icmp_code_destination_port_unreachable);
+                  sr_create_ICMP_params(icmp_type_destination_host_unreachable,
+                                        icmp_code_destination_host_unreachable);
                                         
             // Send ARP request
             //<--TODO PACK PARAM WITH REAL STUFF-->
@@ -248,6 +249,19 @@ static int sr_handle_IP(struct sr_instance *sr,
            }
         }
 	}
+    
+    // Free all allocated data
+    if(eth_hdr_p)
+        free(eth_hdr_p);
+    if(ip_hdr_p)
+        free(ip_hdr_p);
+    if(packet_out)
+        free(packet_out);
+    if(arp_entry)
+        free(arp_entry);        
+    if(parameters)
+        free(parameters);
+    
 
 	return 0;
 }
