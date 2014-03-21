@@ -183,9 +183,10 @@ static int sr_handle_IP(struct sr_instance *sr,
 		{
 			// Send ICMP network unreachable
             parameters = 
-                  sr_create_ICMP_params(icmp_type_destination_port_unreachable,
-                                        icmp_code_destination_port_unreachable);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);return 0;
+                  sr_create_ICMP_params(icmp_type_destination_network_unreachable,
+                                        icmp_code_destination_network_unreachable);
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            return 0;
 		}
 		
         // Translate interface name to phys addr
@@ -202,8 +203,8 @@ static int sr_handle_IP(struct sr_instance *sr,
         {
             // Initialize fail parameters for sr_arpcache_queuereq
             parameters = 
-                  sr_create_ICMP_params(icmp_type_destination_port_unreachable,
-                                        icmp_code_destination_port_unreachable);
+                  sr_create_ICMP_params(icmp_type_destination_host_unreachable,
+                                        icmp_code_destination_host_unreachable);
                                         
             // Send ARP request
             //<--TODO PACK PARAM WITH REAL STUFF-->
