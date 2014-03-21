@@ -112,6 +112,8 @@ void sr_handle_arp(struct sr_instance *sr,
         {
             sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip);
             printf("AFTER SELF LEARNED ARP\n");
+            sr_arpcache_dump(&sr->cache);
+            
         }
         struct sr_if *iface = sr_get_interface(sr, iface_name);
         // construct the Ethernet Header
@@ -250,9 +252,12 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
            memcpy(arp_buf + sizeof(sr_ethernet_hdr_t), 
                   arp_req, 
                   sizeof(sr_arp_hdr_t));
-           if (DEBUG) {Debug("====OUTGOING ARP REQUEST=====\n")};
-           if (DEBUG) print_hdrs(arp_buf,sizeof(sr_ethernet_hdr_t) + 
+           if (DEBUG) 
+           {
+                Debug("====OUTGOING ARP REQUEST=====\n");
+                print_hdrs(arp_buf,sizeof(sr_ethernet_hdr_t) + 
                                          sizeof(sr_arp_hdr_t));
+           }
            sr_send_packet(sr, 
                           arp_buf, 
                           sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t),
