@@ -363,7 +363,7 @@ int sr_handle_ICMP(struct sr_instance *sr,
         if (DEBUG)
         {
             Debug("===OUTGOING ICMP RESPONSE===\n");
-            print_hdrs(response, len);
+            print_hdrs((uint8_t *)response, len);
         }
         return sr_send_packet(sr, 
                             (uint8_t *)response,
