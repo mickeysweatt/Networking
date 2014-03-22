@@ -80,7 +80,7 @@ uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
  *--------------------------------------------------------------------*/
  int icmp_cksum(uint8_t *packet, unsigned int len)
  {
-    if (DEBUG) Debug("=====Checking ICMP Checksum=====\n");
+    if (DEBUG) { Debug("=====Checking ICMP Checksum=====\n"); }
     
     // Allocates memory for ICMP packet + data after it
     sr_icmp_t3_hdr_t* icmp_hdr_p = (sr_icmp_t3_hdr_t       *) 
@@ -103,7 +103,7 @@ uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
     // Compares checksums
     if(expected_icmp_cksum != calculated_icmp_cksum)
     {
-        if (DEBUG) Debug("=====ICMP header checksum is wrong=====\n");
+        if (DEBUG) { Debug("=====ICMP header checksum is wrong=====\n"); }
         return -1;
     }
     return 0;

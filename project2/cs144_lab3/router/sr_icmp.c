@@ -143,5 +143,5 @@ uint8_t* makeICMP_response(struct sr_instance *sr,
             return NULL;
        }
    }
-   return resp;
+   return (uint8_t*) resp;
 }
