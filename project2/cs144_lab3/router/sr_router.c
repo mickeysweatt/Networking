@@ -118,14 +118,15 @@ uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
  *--------------------------------------------------------------------*/
 
 static int sr_handle_IP(struct sr_instance *sr,
-						uint8_t           *packet/* lent */,
-						unsigned int       len,
-						char              *interface,/* lent */
-                        void              *params)
+						uint8_t            *packet/* lent */,
+						unsigned int        len,
+						char               *interface,/* lent */
+                        void               *params)
 {   
 	
 	if(DEBUG) { Debug("*** -> Handling IP packet\n"); }
 	
+    int status = 0;
 	int min_length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
 
 	sr_ethernet_hdr_t  *eth_hdr_p      = NULL;
@@ -189,7 +190,7 @@ static int sr_handle_IP(struct sr_instance *sr,
           {
             if (DEBUG) Debug("IP protocol icmp\n");
             
-            // min_length = ether + ip
+            // Min_length is ip header + ethernet header
             min_length += sizeof(sr_icmp_hdr_t);
             if (len < min_length)
             {
@@ -200,24 +201,29 @@ static int sr_handle_IP(struct sr_instance *sr,
             //Create ICMP echo reply
             parameters = sr_create_ICMP_params(icmp_type_echo_reply,
                                                icmp_code_echo_reply);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
-            return 0; 
+            return sr_handle_ICMP(sr, 
+                                  packet, 
+                                  len, 
+                                  interface, 
+                                  (void *)parameters); 
           } break;
           default:
 		  {
-          
             // Create ICMP destination port unreachable
             parameters = 
                 sr_create_ICMP_params(icmp_type_destination_port_unreachable,
                                       icmp_code_destination_port_unreachable);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
-            return 0;
+            return sr_handle_ICMP(sr, 
+                                  packet, 
+                                  len, 
+                                  interface, 
+                                  (void *)parameters);
           }
 		}
     }        
     else
 	{
-		// FIXME Check TTL 
+		// Check TTL 
 		if(0 == ip_hdr_p->ip_ttl || 1 == ip_hdr_p->ip_ttl)
 		{
             ip_hdr_p->ip_ttl--;
@@ -226,9 +232,11 @@ static int sr_handle_IP(struct sr_instance *sr,
             parameters = 
                   sr_create_ICMP_params(icmp_type_TLL_expired,
                                         icmp_code_TLL_expired);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
-            return 0;
-            
+            return sr_handle_ICMP(sr, 
+                                  packet, 
+                                  len, 
+                                  interface, 
+                                  (void *)parameters);
 		}
 		
 		// Routing table lookup
@@ -240,8 +248,11 @@ static int sr_handle_IP(struct sr_instance *sr,
             parameters = 
                   sr_create_ICMP_params(icmp_type_destination_network_unreachable,
                                         icmp_code_destination_network_unreachable);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
-            return 0;
+            return sr_handle_ICMP(sr, 
+                                  packet, 
+                                  len, 
+                                  interface, 
+                                  (void *)parameters);
 		}
 		
         // Translate interface name to phys addr
@@ -262,8 +273,6 @@ static int sr_handle_IP(struct sr_instance *sr,
                                         icmp_code_destination_host_unreachable);
                                         
             // Send ARP request
-            //<--TODO PACK PARAM WITH REAL STUFF-->
-            
             sr_arpcache_queuereq(sr,
                                 &sr->cache,
                                  rt_entry->dest.s_addr, 
@@ -278,13 +287,12 @@ static int sr_handle_IP(struct sr_instance *sr,
         {
             // Decrement TTL
             ip_hdr_p->ip_ttl--;
-            // Zero out checksum
-            ip_hdr_p->ip_sum = 0;
             // Changing source and destination mac for next hop
             memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);
             memcpy(eth_hdr_p->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
-            // Recalc cksum
             ip_hdr_p->ip_tos = 0;
+            // Recalculate checksum
+            ip_hdr_p->ip_sum = 0;
             ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
             // Make the outgoing packet
             packet_out = (uint8_t *) malloc(len);
@@ -295,10 +303,11 @@ static int sr_handle_IP(struct sr_instance *sr,
             memcpy(packet_out + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t),
                    packet     + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t),
                    len -     (sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)));
-            sr_send_packet(sr, 
-                           packet_out, 
-                           len,
-                           rt_entry->interface);
+            // Send packet out
+            status = sr_send_packet(sr, 
+                                    packet_out, 
+                                    len,
+                                    rt_entry->interface);
            if (DEBUG)
            {
                Debug("===Outgoing IP Packet===\n");
@@ -318,9 +327,7 @@ static int sr_handle_IP(struct sr_instance *sr,
         free(arp_entry);        
     if(parameters)
         free(parameters);
-    
-
-	return 0;
+	return status;
 }
 
                    
@@ -357,10 +364,10 @@ int sr_handlepacket(struct sr_instance *sr,
     
   /* fill in code here */
   
-  // Receive a packet 
-  int min_length = sizeof(sr_ethernet_hdr_t);
   
-  // checks if the length of packet is as long as ethernet header
+  int status     = 0; 
+  int min_length = sizeof(sr_ethernet_hdr_t);
+  // Checks if the length of packet is as long as ethernet header
   if (len < min_length) 
   {
 	fprintf(stderr, "Ethernet, length too small\n");
@@ -378,20 +385,18 @@ int sr_handlepacket(struct sr_instance *sr,
     case ethertype_ip:
     {
 		min_length += sizeof(sr_ip_hdr_t);
-		//check if length of packet is as long as ethernet + IP header
+		// Check if length of packet is as long as ethernet + IP header
 		if(len < min_length)
 		{
 			fprintf(stderr, "IP, length too small\n");
 			return -1;
 		}
-        
-		sr_handle_IP(sr, packet, len, interface, params);
+		status = sr_handle_IP(sr, packet, len, interface, params);
     } break;
     case ethertype_arp:
     {
 		min_length += sizeof(sr_arp_hdr_t);
-		//check if length of packet is as long as ethernet + arp header
-		//check if length of packet is as long as ethernet + arp header
+		// Check if length of packet is as long as ethernet + arp header
 		if(len < min_length)
 		{
 			fprintf(stderr, "ARP, length too small");
@@ -401,12 +406,11 @@ int sr_handlepacket(struct sr_instance *sr,
     } break;
     default:
     {
-        // FIXME
         perror("ERROR");
         return -1;
     }
   }
-    return 0;
+  return status;
 }
 
 int sr_handle_ICMP(struct sr_instance *sr,
