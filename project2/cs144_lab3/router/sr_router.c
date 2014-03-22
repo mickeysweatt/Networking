@@ -80,7 +80,10 @@ uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
  *--------------------------------------------------------------------*/
  int icmp_cksum(uint8_t *packet, unsigned int len)
  {
-    if (DEBUG) Debug("=====Checking ICMP Checksum=====\n");
+    if (DEBUG) 
+    { 
+        Debug("=====Checking ICMP Checksum=====\n"); 
+    }
     
     // Allocates memory for ICMP packet + data after it
     sr_icmp_t3_hdr_t* icmp_hdr_p = (sr_icmp_t3_hdr_t       *) 
@@ -109,7 +112,30 @@ uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
     return 0;
  }
                 
-                
+static uint32_t match_router_address(struct sr_instance *sr, int dest_ip)
+{
+    int rval = 0;
+    if (sr->router_ip.s_addr == dest_ip)
+    {
+        rval = sr->router_ip.s_addr;
+    }
+    else
+    {
+        struct sr_if* if_walker = 0;
+        if_walker = sr->if_list;
+    
+        while(if_walker)
+        {
+            if (if_walker->ip == dest_ip)
+            {
+                rval = if_walker->ip;
+                break;
+            }
+            if_walker = if_walker->next;
+        }
+    }
+    return rval;
+}
                 
 
 /*---------------------------------------------------------------------
@@ -148,7 +174,7 @@ static int sr_handle_IP(struct sr_instance *sr,
            packet + sizeof(sr_ethernet_hdr_t),
            sizeof(sr_ip_hdr_t));	
            
-   // Cache incomming informaiton as well (self-learning)
+   // Cache incoming information as well (self-learning)
     if (0 == sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_src))
     {
         sr_arpcache_insert(&sr->cache, eth_hdr_p->ether_shost, ip_hdr_p->ip_src);
@@ -182,21 +208,22 @@ static int sr_handle_IP(struct sr_instance *sr,
     }
 
 	// Check destination IP 
-	if(ip_hdr_p->ip_dst == sr->router_ip.s_addr)
+	if(match_router_address(sr, ip_hdr_p->ip_dst))
 	{
 		switch(ip_hdr_p->ip_p) 
         {
           case ip_protocol_icmp: 
           {
-            if (DEBUG) Debug("IP protocol icmp\n");
-            
-            // Min_length is ip header + ethernet header
+            if (DEBUG) { Debug("IP protocol icmp\n"); }
+            sr_icmp_t3_hdr_t *icmp_hdr_p = ip_hdr_p + 1;
+            // min_length = ether + ip
             min_length += sizeof(sr_icmp_hdr_t);
             if (len < min_length)
             {
-                fprintf(stderr, "ICMP, length too small\n");
+                //fprintf(stderr, "ICMP, length too small\n");
                 return -1;
             }
+            
             
             //Create ICMP echo reply
             parameters = sr_create_ICMP_params(icmp_type_echo_reply,
@@ -423,23 +450,49 @@ int sr_handle_ICMP(struct sr_instance *sr,
 	enum sr_icmp_code code;
 	memcpy(&type, parameters, sizeof(type));
 	memcpy(&code, parameters + sizeof(type), sizeof(code));
-	uint8_t *response = makeICMP_response(sr, 
-                                         interface, 
-                                         packet,
-                                         type, 
-                                         code); 
-
+    uint8_t *response;
+   
+    if (type == 0)
+    {
+        sr_ethernet_hdr_t *eth_hdr_p = packet;
+        swap(eth_hdr_p->ether_dhost, eth_hdr_p->ether_shost);
+        sr_ip_hdr_t *ip_hdr_p = packet + sizeof(sr_ethernet_hdr_t);
+        sr_icmp_t3_hdr_t *icmp_hdr_p = packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
+        swap(ip_hdr_p->ip_src, ip_hdr_p->ip_dst);
+        ip_hdr_p->ip_sum = 0;
+        ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
+        icmp_hdr_p->icmp_type = 0;
+        icmp_hdr_p->icmp_sum = 0;
+        icmp_hdr_p->icmp_sum = cksum(ip_hdr_p, sizeof(*ip_hdr_p));
+        response = packet;
+        // Routing table look-up for destination
+        struct sr_rt *rt_entry = sr_find_rt_entry(sr->routing_table, 
+                                                  ip_hdr_p->ip_src);
+        // interface look-up
+        interface = rt_entry->interface;
+        struct sr_if* i_face = sr_get_interface(sr, interface);
+        memcpy(eth_hdr_p->ether_shost, i_face->addr, ETHER_ADDR_LEN);
+        printf("\tIface: %s\n\n", interface);
+    }
+    else 
+    {
+        response = makeICMP_response(sr, 
+                                     interface, 
+                                     packet,
+                                     type, 
+                                     code); 
+    }
     if (!response)
     {
         return -1;
     }
     else
     {
-        if (DEBUG)
-        {
+        // if (DEBUG)
+        // {
             Debug("===OUTGOING ICMP RESPONSE===\n");
             print_hdrs((uint8_t *)response, len);
-        }
+        // }
         size_t packet_len = sizeof(sr_ethernet_hdr_t) + 
                             sizeof(sr_ip_hdr_t)       + 
                             sizeof(sr_icmp_t3_hdr_t);
@@ -448,5 +501,4 @@ int sr_handle_ICMP(struct sr_instance *sr,
                             packet_len, 
                             interface);
     }
-	
 }
