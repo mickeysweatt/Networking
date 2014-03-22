@@ -190,7 +190,7 @@ struct sr_rt *sr_find_rt_entry(struct sr_rt* head, uint32_t ip)
     while (curr)
     {
         currMatch = prefix_match(ip, curr->dest.s_addr);
-        if (currMatch > longestMatch)
+        if (currMatch >= 8 && currMatch > longestMatch)
         {
             longestMatch = currMatch;
             rval = curr;

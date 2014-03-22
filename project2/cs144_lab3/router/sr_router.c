@@ -107,10 +107,7 @@ uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
         return -1;
     }
     return 0;
- }
-                
-                
-                
+}                                         
 
 /*---------------------------------------------------------------------
  * Method: sr_handle_IP
@@ -149,7 +146,8 @@ static int sr_handle_IP(struct sr_instance *sr,
            sizeof(sr_ip_hdr_t));	
            
    // Cache incomming informaiton as well (self-learning)
-    if (0 == sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_src))
+    if (0 == sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_src) &&
+    	0 != sr_find_rt_entry(sr->routing_table,ip_hdr_p->ip_dst) )
     {
         sr_arpcache_insert(&sr->cache, eth_hdr_p->ether_shost, ip_hdr_p->ip_src);
         if (DEBUG) 

@@ -232,7 +232,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req)
        {
            // send icmp host unreachable to source addr of all
            // pkts waiting on this request
-           Debug("---Dropping an arp request---\n");
+           printf("---Dropping an arp request---\n");
            if (req->fail_handler)
            {
                handle_waiting_packets(sr, req, req->fail_handler);
