@@ -73,6 +73,45 @@ uint8_t* sr_create_ICMP_params(enum sr_icmp_type type, enum sr_icmp_code code)
 	return parameters;
 }
 
+
+/*---------------------------------------------------------------------
+ * Method: icmp_cksum
+ * Checks the ICMP checksum before sending the packet out
+ *--------------------------------------------------------------------*/
+ int icmp_cksum(uint8_t *packet, unsigned int len)
+ {
+    if (DEBUG) Debug("=====Checking ICMP Checksum=====\n");
+    
+    // Allocates memory for ICMP packet + data after it
+    sr_icmp_t3_hdr_t* icmp_hdr_p = (sr_icmp_t3_hdr_t       *) 
+                                    malloc(len - 
+                                           sizeof(sr_ethernet_hdr_t) - 
+                                           sizeof(sr_ip_hdr_t));
+    
+    // Unpacks ICMP packet + data into pointer
+    memcpy(icmp_hdr_p, 
+           packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t),
+           len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+    
+    // Extracts expected checksum and calculates checksum
+    uint16_t expected_icmp_cksum = icmp_hdr_p->icmp_sum;
+    icmp_hdr_p->icmp_sum = 0;
+    uint16_t calculated_icmp_cksum = cksum((void *)icmp_hdr_p,
+                                            len - 
+                                            sizeof(sr_ethernet_hdr_t) - 
+                                            sizeof(sr_ip_hdr_t));
+    // Compares checksums
+    if(expected_icmp_cksum != calculated_icmp_cksum)
+    {
+        if (DEBUG) Debug("=====ICMP header checksum is wrong=====\n");
+        return -1;
+    }
+    return 0;
+ }
+                
+                
+                
+
 /*---------------------------------------------------------------------
  * Method: sr_handle_IP
  * returns 0 or -1 depending on whether its a success or failure
@@ -89,7 +128,6 @@ static int sr_handle_IP(struct sr_instance *sr,
 	
 	int min_length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t);
 
-	// FIXME Free these structures
 	sr_ethernet_hdr_t  *eth_hdr_p      = NULL;
 	sr_ip_hdr_t        *ip_hdr_p       = NULL;
     uint8_t            *packet_out     = NULL;
@@ -108,29 +146,38 @@ static int sr_handle_IP(struct sr_instance *sr,
     memcpy(ip_hdr_p,
            packet + sizeof(sr_ethernet_hdr_t),
            sizeof(sr_ip_hdr_t));	
-   // cache incomming informaiton as well (self-learning)
-   
+           
+   // Cache incomming informaiton as well (self-learning)
     if (0 == sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_src))
     {
         sr_arpcache_insert(&sr->cache, eth_hdr_p->ether_shost, ip_hdr_p->ip_src);
         printf("AFTER SELF LEARNED ARP IN IP\n");
         sr_arpcache_dump(&sr->cache);
     }
+    
 	// Check if checksum is correct for packet
 	uint16_t expected_cksum         = ip_hdr_p->ip_sum;
 	ip_hdr_p->ip_sum                = 0;
 	uint16_t calculated_cksum       = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
-	
+    
+    
 	// Verify checksum. If fail: drop the packet
 	if(expected_cksum != calculated_cksum)
 	{
 		fprintf(stderr, "Checksum error in packet");
 		return -1;
 	}    
+    
+    // Put back original checksum
+    ip_hdr_p->ip_sum = expected_cksum;
+    
+    // Checks if ICMP
+    if(ip_hdr_p->ip_p == ip_protocol_icmp && -1 == icmp_cksum(packet, len))
+    {
+        return -1;
+    }
 
 	// Check destination IP 
-	// If destined to router, what is the protocol field in IP header? 
-	
 	if(ip_hdr_p->ip_dst == sr->router_ip.s_addr)
 	{
 		switch(ip_hdr_p->ip_p) 
@@ -144,20 +191,24 @@ static int sr_handle_IP(struct sr_instance *sr,
             if (len < min_length)
             {
                 fprintf(stderr, "ICMP, length too small\n");
-                // FIXME
                 return -1;
             }
-            // TODO: ICMP -> ICMP processing (e.g., echo request, echo reply)
+            
+            //Create ICMP echo reply
             parameters = sr_create_ICMP_params(icmp_type_echo_reply,
                                                icmp_code_echo_reply);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);return 0; 
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            return 0; 
           } break;
           default:
 		  {
+          
+            // Create ICMP destination port unreachable
             parameters = 
                 sr_create_ICMP_params(icmp_type_destination_port_unreachable,
                                       icmp_code_destination_port_unreachable);
-            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);return 0;
+            sr_handle_ICMP(sr, packet, len, interface, (void *)parameters);
+            return 0;
           }
 		}
     }        
@@ -167,6 +218,7 @@ static int sr_handle_IP(struct sr_instance *sr,
 		if(0 == ip_hdr_p->ip_ttl || 1 == ip_hdr_p->ip_ttl)
 		{
             ip_hdr_p->ip_ttl--;
+            ip_hdr_p->ip_sum = 0;
             ip_hdr_p->ip_sum = cksum(ip_hdr_p, sizeof(sr_ip_hdr_t));
             parameters = 
                   sr_create_ICMP_params(icmp_type_TLL_expired,
@@ -223,6 +275,8 @@ static int sr_handle_IP(struct sr_instance *sr,
         {
             // Decrement TTL
             ip_hdr_p->ip_ttl--;
+            // Zero out checksum
+            ip_hdr_p->ip_sum = 0;
             // Changing source and destination mac for next hop
             memcpy(eth_hdr_p->ether_shost, if_entry->addr, ETHER_ADDR_LEN);
             memcpy(eth_hdr_p->ether_dhost, arp_entry->mac, ETHER_ADDR_LEN);
