@@ -9,31 +9,42 @@
 #include <limits.h>
 
 //==============================================================================
+//                          PRIVATE TYPES
+//==============================================================================
+struct sr_icmp_response
+{
+   sr_ethernet_hdr_t eth;
+   sr_ip_hdr_t ip;             /* IP header */
+   sr_icmp_t3_hdr_t icmp;         /* ICMP header */
+} __attribute__ ((packed)) ;
+typedef struct sr_icmp_response sr_icmp_response_t;
+
+//==============================================================================
 //                          LOCAL FUNCTION DECLARATIONS
 //==============================================================================
 static int makeICMP_hdr(uint8_t           *buf, 
                         sr_icmp_t3_hdr_t  *s, 
-                        enum sr_icmp_type  t1, 
-                        enum sr_icmp_code  c1);
+                        enum sr_icmp_type  type, 
+                        enum sr_icmp_code  code);
 
 static int makeIP_hdr(struct sr_instance *sr, 
-                      uint32_t           ip_src, 
+                      uint32_t            ip_src, 
                       sr_ip_hdr_t        *ip, 
                       uint8_t            *buf);
 
 static int makeEthr_hdr(struct sr_instance *sr,
-                 sr_ethernet_hdr_t         *et,
-                 uint8_t                   *buf, 
-                 unsigned char              mac[ETHER_ADDR_LEN]);
-                 
+                        sr_ethernet_hdr_t  *et,
+                        unsigned char       mac[ETHER_ADDR_LEN],
+                        uint8_t            *buf);
+                
 //==============================================================================
 //                          LOCAL FUNCTION DEFINITIONS
 //==============================================================================
 
 static int makeEthr_hdr(struct sr_instance *sr,
-                        sr_ethernet_hdr_t  *et,
-                        uint8_t            *buf, 
-                        unsigned char mac[ETHER_ADDR_LEN])
+                 sr_ethernet_hdr_t         *et,
+                 unsigned char              mac[ETHER_ADDR_LEN],
+                 uint8_t                   *buf)
 {
    memset(et, 0, sizeof(sr_ethernet_hdr_t));
    sr_ethernet_hdr_t* topOfEthr = (sr_ethernet_hdr_t*) (buf);
@@ -66,12 +77,12 @@ static int makeIP_hdr(struct sr_instance *sr,
 
 int makeICMP_hdr(uint8_t          *buf, 
                  sr_icmp_t3_hdr_t *s,
-                 enum sr_icmp_type t1, 
-                 enum sr_icmp_code c1)
+                 enum sr_icmp_type type, 
+                 enum sr_icmp_code code)
 {
    memset(s, 0, sizeof(sr_icmp_t3_hdr_t));
-   s->icmp_type = t1; //set the type
-   s->icmp_code = c1; //set the code to be Host Unreachable
+   s->icmp_type = type; //set the type
+   s->icmp_code = code; //set the code to be Host Unreachable
    uint8_t *ip_hdr_p = buf + sizeof(sr_ethernet_hdr_t);
    memcpy(&(s->data), ip_hdr_p, ICMP_DATA_SIZE);
    s->icmp_sum = 0;
@@ -82,14 +93,14 @@ int makeICMP_hdr(uint8_t          *buf,
 //                          SR_ICMP DEFINTIONS
 //==============================================================================
 uint8_t* makeICMP_response(struct sr_instance *sr, 
-                                      char               *iface, 
-                                      uint8_t            *buf, 
-                                      enum sr_icmp_type   type, 
-                                      enum sr_icmp_code   code)
+                           char               *iface, 
+                           uint8_t            *buf, 
+                           enum sr_icmp_type   type, 
+                           enum sr_icmp_code   code)
 {
-   uint8_t *resp = malloc(sizeof(sr_ethernet_hdr_t) + 
-                          sizeof(sr_ip_hdr_t)       + 
-                          sizeof(sr_icmp_t3_hdr_t));
+   sr_icmp_response_t *resp = malloc(sizeof(sr_ethernet_hdr_t) + 
+                                     sizeof(sr_ip_hdr_t)       + 
+                                     sizeof(sr_icmp_t3_hdr_t));
    memset(resp, 0, sizeof(sr_icmp_response_t));
    // Routing table look-up for destination
    sr_ip_hdr_t *ip_hdr_p  = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
@@ -124,12 +135,9 @@ uint8_t* makeICMP_response(struct sr_instance *sr,
    }
    else
    {
-       sr_ethernet_hdr_t *eth  = (sr_ethernet_hdr_t *)resp;
-       sr_ip_hdr_t       *ip   = (sr_ip_hdr_t*)(eth + 1);
-       sr_icmp_t3_hdr_t  *icmp = (sr_icmp_t3_hdr_t *)(ip + 1);
-       if (0 != makeEthr_hdr(sr, eth, buf, arp_entry->mac) ||
-           0 != makeIP_hdr(sr, i_face->ip, ip, buf)        ||
-           0 != makeICMP_hdr(buf, icmp, type, code))
+       if (0 != makeEthr_hdr(sr, &resp->eth, arp_entry->mac, buf) ||
+           0 != makeIP_hdr(sr, i_face->ip, &resp->ip, buf)        ||
+           0 != makeICMP_hdr(buf, &resp->icmp, type, code))
        {
             free(resp);
             return NULL;

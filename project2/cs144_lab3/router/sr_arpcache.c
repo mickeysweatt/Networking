@@ -111,8 +111,11 @@ void sr_handle_arp(struct sr_instance *sr,
         if (0 == sr_arpcache_lookup(&sr->cache, arp_hdr->ar_sip))
         {
             sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip);
-            printf("AFTER SELF LEARNED ARP\n");
-            sr_arpcache_dump(&sr->cache);
+            if (DEBUG)
+            {
+                printf("AFTER SELF LEARNED ARP\n");
+                sr_arpcache_dump(&sr->cache);
+            }
             
         }
         struct sr_if *iface = sr_get_interface(sr, iface_name);
@@ -147,8 +150,12 @@ void sr_handle_arp(struct sr_instance *sr,
     {
         if (sr_arpcache_insert(&sr->cache, arp_hdr->ar_sha, arp_hdr->ar_sip))
         {
-            if (DEBUG) { Debug("Updated arp cache entry\n") };
-            sr_arpcache_dump(&sr->cache);
+            if (DEBUG)
+            { 
+                Debug("Updated arp cache entry\n");
+                sr_arpcache_dump(&sr->cache);
+            }
+            
 
         }
         struct sr_arpreq *req = find_request_for_ip(&sr->cache, arp_hdr->ar_sip);

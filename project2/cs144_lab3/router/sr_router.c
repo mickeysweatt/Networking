@@ -113,8 +113,11 @@ static int sr_handle_IP(struct sr_instance *sr,
     if (0 == sr_arpcache_lookup(&sr->cache, ip_hdr_p->ip_src))
     {
         sr_arpcache_insert(&sr->cache, eth_hdr_p->ether_shost, ip_hdr_p->ip_src);
-        printf("AFTER SELF LEARNED ARP IN IP\n");
-        sr_arpcache_dump(&sr->cache);
+        if (DEBUG) 
+        {
+            printf("AFTER SELF LEARNED ARP IN IP\n");
+            sr_arpcache_dump(&sr->cache);
+        }
     }
 	// Check if checksum is correct for packet
 	uint16_t expected_cksum         = ip_hdr_p->ip_sum;
@@ -310,11 +313,11 @@ int sr_handlepacket(struct sr_instance *sr,
     return -1;
   }
    // Output packet
-   // if (DEBUG)
-   // {    
+   if (DEBUG)
+   {    
         fprintf(stderr, "===Incoming Packet===\n");
         print_hdrs(packet, len);
-    // }
+   }
   // Check the type of the ethenet packet
   switch(ethertype(packet))
   {
@@ -362,11 +365,11 @@ int sr_handle_ICMP(struct sr_instance *sr,
 	enum sr_icmp_code code;
 	memcpy(&type, parameters, sizeof(type));
 	memcpy(&code, parameters + sizeof(type), sizeof(code));
-	sr_icmp_response_t* response = makeICMP_response(sr, 
-                                                     interface, 
-                                                     packet,
-                                                     type, 
-                                                     code); 
+	uint8_t *response = makeICMP_response(sr, 
+                                         interface, 
+                                         packet,
+                                         type, 
+                                         code); 
 
     if (!response)
     {
@@ -379,9 +382,12 @@ int sr_handle_ICMP(struct sr_instance *sr,
             Debug("===OUTGOING ICMP RESPONSE===\n");
             print_hdrs((uint8_t *)response, len);
         }
+        size_t packet_len = sizeof(sr_ethernet_hdr_t) + 
+                            sizeof(sr_ip_hdr_t)       + 
+                            sizeof(sr_icmp_t3_hdr_t);
         return sr_send_packet(sr, 
                             (uint8_t *)response,
-                            sizeof(sr_icmp_response_t), 
+                            packet_len, 
                             interface);
     }
 	

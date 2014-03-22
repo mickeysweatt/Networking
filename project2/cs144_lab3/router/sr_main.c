@@ -35,7 +35,7 @@
 
 extern char* optarg;
 
-const int DEBUG = 1;
+const int DEBUG = 0;
 
 /*-----------------------------------------------------------------------------
  *---------------------------------------------------------------------------*/
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
     sr_print_routing_table(&sr);
     /* -- whizbang main loop ;-) */
     while( sr_read_from_server(&sr) == 1);
-    //sr_destroy_instance(&sr);
+    sr_destroy_instance(&sr);
 
     return 0;
 }/* -- main -- */

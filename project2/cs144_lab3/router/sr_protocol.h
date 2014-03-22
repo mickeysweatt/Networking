@@ -156,7 +156,7 @@ enum sr_icmp_type {
    icmp_type_destination_host_unknown = 3,
    icmp_type_echo_request = 8,
    icmp_type_TLL_expired = 11,
-   icmp_type_IP_header_bad = 12,
+   icmp_type_IP_header_bad = 12
 };
 
 enum sr_icmp_code {
@@ -169,7 +169,7 @@ enum sr_icmp_code {
    icmp_code_destination_host_unknown = 7,
    icmp_code_echo_request = 0,
    icmp_code_TLL_expired = 0,
-   icmp_code_IP_header_bad = 0,
+   icmp_code_IP_header_bad = 0
 };
 
 
@@ -177,26 +177,26 @@ enum sr_icmp_code {
 enum sr_ip_protocol {
   ip_protocol_icmp = 0x0001,
   ip_protocol_tcp  = 0x0006,
-  ip_protocol_udp  = 0x0011,
+  ip_protocol_udp  = 0x0011
 };
 
 enum sr_ip_version {
-    ip_version_ipv4 = 0x04,
+    ip_version_ipv4 = 0x04
 };
 
 enum sr_ethertype {
   ethertype_arp = 0x0806,
-  ethertype_ip  = 0x0800,
+  ethertype_ip  = 0x0800
 };
 
 
 enum sr_arp_opcode {
   arp_op_request = 0x0001,
-  arp_op_reply   = 0x0002,
+  arp_op_reply   = 0x0002
 };
 
 enum sr_arp_hrd_fmt {
-  arp_hrd_ethernet = 0x0001,
+  arp_hrd_ethernet = 0x0001
 };
 
 

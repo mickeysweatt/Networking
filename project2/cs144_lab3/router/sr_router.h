@@ -25,7 +25,7 @@
   (unsigned char)(x[ivyl])); printf("%02x",(unsigned char)(x[5])); } while (0)
 #else
 #define Debug(x, args...) do{}while(0)
-#define Debug MAC(x) do{}while(0)
+#define DebugMAC(x) do{}while(0)
 #endif
 
 #define INIT_TTL 255
@@ -44,7 +44,7 @@ struct sr_rt;
 
 struct sr_instance
 {
-    // stuff for Virtualization
+    /* stuff for Virtualization */
     int  sockfd;   /* socket to server */
     char user[32]; /* user name */
     char host[32]; /* host name */ 
@@ -57,7 +57,7 @@ struct sr_instance
     struct sr_rt        *routing_table; /* routing table */
     struct sr_arpcache   cache;         /* ARP cache */
     struct in_addr       router_ip;     /* ip address of router */
-    // for threading / DEBUGGING
+    /* for threading / DEBUGGING */
     pthread_attr_t attr;
     FILE* logfile;
 };
@@ -81,10 +81,10 @@ void sr_set_ether_addr(struct sr_instance* , const unsigned char* );
 void sr_print_if_list(struct sr_instance* );
 
 int sr_handle_ICMP(struct sr_instance *sr,
-                                                uint8_t           *packet/* lent */,
-                                                unsigned int       len,
-                                                char              *interface,/* lent */
-                        void              *params);
+                   uint8_t            *packet/* lent */,
+                   unsigned int        len,
+                   char               *interface,/* lent */
+                   void               *params);
 
 
 

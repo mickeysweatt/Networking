@@ -214,10 +214,12 @@ int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
                             *((struct in_addr*)(hwinfo->mHWInfo[i].value)))); */
                 break;
             case HWETHIP:
+            {
                 /*Debug("IP: %s\n",inet_ntoa(
                             *((struct in_addr*)(hwinfo->mHWInfo[i].value))));*/
-                sr_set_ether_ip(sr,*((uint32_t*)hwinfo->mHWInfo[i].value));
-                break;
+                uint32_t *mac_p = (uint32_t *) hwinfo->mHWInfo[i].value;
+                sr_set_ether_ip(sr,*mac_p);
+            } break;
             case HWETHER:
                 /*Debug("\tHardware Address: ");
                 DebugMAC(hwinfo->mHWInfo[i].value);
