@@ -136,12 +136,12 @@ uint8_t* makeICMP_response(struct sr_instance *sr,
    else
    {
        if (0 != makeEthr_hdr(sr, &resp->eth, arp_entry->mac, buf) ||
-           0 != makeIP_hdr(sr, i_face->ip, &resp->ip, buf)        ||
+           0 != makeIP_hdr(sr, ip_hdr_p->ip_dst, &resp->ip, buf)        ||
            0 != makeICMP_hdr(buf, &resp->icmp, type, code))
        {
             free(resp);
             return NULL;
        }
    }
-   return resp;
+   return (uint8_t *)resp;
 }

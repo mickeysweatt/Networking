@@ -233,5 +233,5 @@ int sr_address_is_valid(struct sr_instance* sr, const unsigned char* address)
         }
         if_walker = if_walker->next;
     }
-    return !!if_walker;
+    return if_walker ? if_walker->ip : 0;
 }
